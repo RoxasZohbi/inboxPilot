@@ -23,11 +23,11 @@
                 <p class="text-sm text-gray-300">Start syncing your emails from your connected Google account</p>
             </div>
         </div>
-        <button class="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center gap-2">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button id="syncGmailBtn" class="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+            <svg id="syncIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
             </svg>
-            Start Sync
+            <span id="syncBtnText">Start Sync</span>
         </button>
     </div>
 </div>
@@ -148,10 +148,74 @@
 
 @push('scripts')
     <script>
-        console.log('Dashboard loaded successfully');
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            // Your DOM manipulation code
+        $(document).ready(function() {
+            // Gmail Sync Button Handler
+            $('#syncGmailBtn').on('click', function(e) {
+                e.preventDefault();
+                
+                // Confirm with user
+                if (!confirm('This will fetch up to 50 emails from your Gmail account. Do you want to continue?')) {
+                    return;
+                }
+                
+                const $btn = $(this);
+                const $btnText = $('#syncBtnText');
+                const $syncIcon = $('#syncIcon');
+                
+                // Disable button and show loading state
+                $btn.prop('disabled', true);
+                $btnText.text('Syncing...');
+                $syncIcon.addClass('animate-spin');
+                
+                // Make AJAX request
+                $.ajax({
+                    url: '/api/gmail/fetch',
+                    type: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                        'Accept': 'application/json',
+                    },
+                    data: {
+                        max_results: 50
+                    },
+                    success: function(response) {
+                        $syncIcon.removeClass('animate-spin');
+                        $btnText.text('Sync Complete!');
+                        
+                        // Show success message
+                        alert(`Successfully fetched ${response.data.count} emails from your Gmail account!`);
+                        
+                        // Log emails to console for inspection
+                        console.log('Fetched Emails:', response.data.emails);
+                        console.table(response.data.emails.slice(0, 10));
+                        
+                        // Re-enable button after 3 seconds
+                        setTimeout(function() {
+                            $btn.prop('disabled', false);
+                            $btnText.text('Start Sync');
+                        }, 3000);
+                    },
+                    error: function(xhr) {
+                        $syncIcon.removeClass('animate-spin');
+                        $btn.prop('disabled', false);
+                        $btnText.text('Start Sync');
+                        
+                        // Show error message
+                        let errorMessage = 'Failed to fetch emails. Please try again.';
+                        
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        } else if (xhr.status === 401) {
+                            errorMessage = 'Authentication required. Please sign in with Google first.';
+                        } else if (xhr.status === 400) {
+                            errorMessage = 'Gmail account not connected. Please sign in with Google.';
+                        }
+                        
+                        alert(errorMessage);
+                        console.error('Error:', xhr.responseJSON || xhr.statusText);
+                    }
+                });
+            });
         });
     </script>
 @endpush

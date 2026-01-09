@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\GmailController;
 
 /*
 |--------------------------------------------------------------------------
@@ -34,4 +35,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Category API endpoints
     Route::apiResource('categories', CategoryController::class);
+    
+    // Gmail API endpoints
+    Route::post('/gmail/fetch', [GmailController::class, 'fetchEmails']);
 });

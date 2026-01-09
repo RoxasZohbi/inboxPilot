@@ -15,7 +15,14 @@ class GoogleAuthController extends Controller
      */
     public function redirectToGoogle()
     {
-        return Socialite::driver('google')->redirect();
+        /** @var \Laravel\Socialite\Two\GoogleProvider $provider */
+        $provider = Socialite::driver('google');
+        return $provider
+            ->scopes([
+                'https://www.googleapis.com/auth/gmail.readonly',
+                'https://www.googleapis.com/auth/gmail.modify',
+            ])
+            ->redirect();
     }
 
     /**
@@ -37,6 +44,14 @@ class GoogleAuthController extends Controller
                     $user->update([
                         'google_id' => $googleUser->getId(),
                         'avatar' => $googleUser->getAvatar(),
+                        'google_token' => $googleUser->token,
+                        'google_refresh_token' => $googleUser->refreshToken,
+                    ]);
+                } else {
+                    // Update tokens even if user exists
+                    $user->update([
+                        'google_token' => $googleUser->token,
+                        'google_refresh_token' => $googleUser->refreshToken ?? $user->google_refresh_token,
                     ]);
                 }
             } else {
@@ -46,6 +61,8 @@ class GoogleAuthController extends Controller
                     'email' => $googleUser->getEmail(),
                     'google_id' => $googleUser->getId(),
                     'avatar' => $googleUser->getAvatar(),
+                    'google_token' => $googleUser->token,
+                    'google_refresh_token' => $googleUser->refreshToken,
                     'email_verified_at' => now(), // Google users are pre-verified
                 ]);
             }
