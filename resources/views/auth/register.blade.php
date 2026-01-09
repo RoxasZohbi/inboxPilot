@@ -1,37 +1,122 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Register</title>
-</head>
-<body>
+@extends('layouts.blank')
 
-<h1>Register</h1>
+@section('title', 'Sign Up - '.config('app.name', 'InboxPilot'))
 
-<form method="POST" action="{{ route('register') }}">
-    @csrf
-
-    <div>
-        <label>Name</label><br>
-        <input type="text" name="name" required>
+@section('content')
+<div class="w-full max-w-md mx-auto">
+    <!-- Logo/Brand -->
+    <div class="text-center mb-8">
+        <h1 class="text-4xl font-bold text-white mb-3">
+            <span class="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">InboxPilot</span>
+        </h1>
+        <p class="text-gray-400 text-lg">Start managing your inbox smarter</p>
     </div>
 
-    <div>
-        <label>Email</label><br>
-        <input type="email" name="email" required>
+    <!-- Register Card -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-8 shadow-2xl">
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold text-white mb-2">Create Account</h2>
+            <p class="text-gray-400">Get started with InboxPilot today</p>
+        </div>
+
+        <!-- Google Sign Up Button -->
+        <button type="button" 
+                class="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white hover:bg-gray-100 text-gray-800 font-semibold rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg hover:shadow-xl">
+            <svg class="w-6 h-6" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            </svg>
+            <span>Sign up with Google</span>
+        </button>
+
+        <!-- Divider -->
+        <div class="relative my-8">
+            <div class="absolute inset-0 flex items-center">
+                <div class="w-full border-t border-gray-800"></div>
+            </div>
+            <div class="relative flex justify-center text-sm">
+                <span class="px-4 bg-gray-900 text-gray-500">What you'll get</span>
+            </div>
+        </div>
+
+        <!-- Benefits -->
+        <div class="space-y-4">
+            <div class="flex items-start gap-3">
+                <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h4 class="text-white font-semibold mb-1">Smart Automation</h4>
+                    <p class="text-gray-400 text-sm">AI-powered email management</p>
+                </div>
+            </div>
+            <div class="flex items-start gap-3">
+                <div class="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h4 class="text-white font-semibold mb-1">Secure & Private</h4>
+                    <p class="text-gray-400 text-sm">Your data is always protected</p>
+                </div>
+            </div>
+            <div class="flex items-start gap-3">
+                <div class="w-8 h-8 bg-gradient-to-br from-green-500 to-teal-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h4 class="text-white font-semibold mb-1">Save Time</h4>
+                    <p class="text-gray-400 text-sm">Reduce email time by 80%</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Terms -->
+        <div class="mt-6 pt-6 border-t border-gray-800">
+            <p class="text-gray-500 text-xs text-center">
+                By signing up, you agree to our 
+                <a href="#" class="text-blue-400 hover:text-blue-300">Terms of Service</a> and 
+                <a href="#" class="text-blue-400 hover:text-blue-300">Privacy Policy</a>
+            </p>
+        </div>
     </div>
 
-    <div>
-        <label>Password</label><br>
-        <input type="password" name="password" required>
+    <!-- Login Link -->
+    <div class="text-center mt-6">
+        <p class="text-gray-400">
+            Already have an account?
+            <a href="{{ route('login') }}" class="text-blue-400 hover:text-blue-300 font-semibold transition-colors">
+                Sign in here
+            </a>
+        </p>
     </div>
 
-    <div>
-        <label>Confirm Password</label><br>
-        <input type="password" name="password_confirmation" required>
+    <!-- Back to Home -->
+    <div class="text-center mt-4">
+        <a href="{{ url('/') }}" class="text-gray-500 hover:text-gray-400 text-sm transition-colors">
+            ← Back to home
+        </a>
     </div>
+</div>
+@endsection
 
-    <button type="submit">Register</button>
-</form>
-
-</body>
-</html>
+@push('scripts')
+<script>
+    // Add click animation
+    document.querySelector('button[type="button"]').addEventListener('click', function() {
+        this.classList.add('animate-pulse');
+        setTimeout(() => {
+            this.classList.remove('animate-pulse');
+            // Here you would implement Google OAuth
+            console.log('Google authentication would be triggered here');
+        }, 300);
+    });
+</script>
+@endpush
