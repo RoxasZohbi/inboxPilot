@@ -1,0 +1,37 @@
+<?php
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\CategoryController;
+
+/*
+|--------------------------------------------------------------------------
+| API Routes
+|--------------------------------------------------------------------------
+|
+| Here is where you can register API routes for your application. These
+| routes are loaded by the RouteServiceProvider and all of them will
+| be assigned to the "api" middleware group. Make something great!
+|
+*/
+
+// Public routes (no authentication required)
+Route::get('/health', function () {
+    return response()->json([
+        'status' => 'ok',
+        'timestamp' => now()->toIso8601String(),
+    ]);
+});
+
+// Protected routes (require authentication)
+Route::middleware('auth:sanctum')->group(function () {
+    // Get authenticated user
+    Route::get('/user', function (Request $request) {
+        return response()->json([
+            'data' => $request->user(),
+        ]);
+    });
+
+    // Category API endpoints
+    Route::apiResource('categories', CategoryController::class);
+});
