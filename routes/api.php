@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\GmailController;
+use App\Http\Controllers\Api\EmailController;
 
 /*
 |--------------------------------------------------------------------------
@@ -37,5 +38,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('categories', CategoryController::class);
     
     // Gmail API endpoints
-    Route::post('/gmail/fetch', [GmailController::class, 'fetchEmails']);
+    Route::post('/gmail/sync', [GmailController::class, 'syncEmails']);
+    Route::get('/gmail/sync-status', [GmailController::class, 'syncStatus']);
+    
+    // Email API endpoints
+    Route::get('/emails', [EmailController::class, 'index']);
+    Route::get('/emails/{id}', [EmailController::class, 'show']);
+    Route::patch('/emails/{id}/toggle-read', [EmailController::class, 'toggleRead']);
+    Route::patch('/emails/{id}/toggle-star', [EmailController::class, 'toggleStar']);
+    Route::delete('/emails/{id}', [EmailController::class, 'destroy']);
 });

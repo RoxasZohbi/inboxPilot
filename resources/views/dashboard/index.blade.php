@@ -27,7 +27,13 @@
             <svg id="syncIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
             </svg>
-            <span id="syncBtnText">Start Sync</span>
+            <span id="syncBtnText">
+                @if(Auth::user()->last_synced_at)
+                    Last synced: {{ Auth::user()->last_synced_at->diffForHumans() }}
+                @else
+                    Checking...
+                @endif
+            </span>
         </button>
     </div>
 </div>
@@ -44,7 +50,7 @@
             </div>
             <div>
                 <p class="text-gray-400 text-sm font-medium">Total Emails</p>
-                <p class="text-2xl font-bold text-white">0</p>
+                <p id="totalEmailsCount" class="text-2xl font-bold text-white">{{ Auth::user()->totalEmailsCount() }}</p>
             </div>
         </div>
     </div>
@@ -149,12 +155,17 @@
 @push('scripts')
     <script>
         $(document).ready(function() {
-            // Gmail Sync Button Handler
+            let syncPollingInterval = null;
+            
+            // Auto-check sync status on page load
+            checkSyncStatus();
+            
+            // Gmail Sync Button Handler (Manual Sync)
             $('#syncGmailBtn').on('click', function(e) {
                 e.preventDefault();
                 
-                // Confirm with user
-                if (!confirm('This will fetch up to 50 emails from your Gmail account. Do you want to continue?')) {
+                // Confirm with user for manual sync
+                if (!confirm('This will sync your latest emails from Gmail. Continue?')) {
                     return;
                 }
                 
@@ -164,44 +175,33 @@
                 
                 // Disable button and show loading state
                 $btn.prop('disabled', true);
-                $btnText.text('Syncing...');
+                $btnText.text('Starting...');
                 $syncIcon.addClass('animate-spin');
                 
-                // Make AJAX request
+                // Make AJAX request to start sync
                 $.ajax({
-                    url: '/api/gmail/fetch',
+                    url: '/api/gmail/sync',
                     type: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
                         'Accept': 'application/json',
                     },
                     data: {
-                        max_results: 50
+                        max_results: 100
                     },
                     success: function(response) {
-                        $syncIcon.removeClass('animate-spin');
-                        $btnText.text('Sync Complete!');
+                        console.log('Sync started:', response);
+                        $btnText.text('Syncing...');
                         
-                        // Show success message
-                        alert(`Successfully fetched ${response.data.count} emails from your Gmail account!`);
-                        
-                        // Log emails to console for inspection
-                        console.log('Fetched Emails:', response.data.emails);
-                        console.table(response.data.emails.slice(0, 10));
-                        
-                        // Re-enable button after 3 seconds
-                        setTimeout(function() {
-                            $btn.prop('disabled', false);
-                            $btnText.text('Start Sync');
-                        }, 3000);
+                        // Start polling for status
+                        startStatusPolling();
                     },
                     error: function(xhr) {
                         $syncIcon.removeClass('animate-spin');
                         $btn.prop('disabled', false);
-                        $btnText.text('Start Sync');
+                        $btnText.text('Sync Now');
                         
-                        // Show error message
-                        let errorMessage = 'Failed to fetch emails. Please try again.';
+                        let errorMessage = 'Failed to start sync. Please try again.';
                         
                         if (xhr.responseJSON && xhr.responseJSON.message) {
                             errorMessage = xhr.responseJSON.message;
@@ -209,6 +209,9 @@
                             errorMessage = 'Authentication required. Please sign in with Google first.';
                         } else if (xhr.status === 400) {
                             errorMessage = 'Gmail account not connected. Please sign in with Google.';
+                        } else if (xhr.status === 409) {
+                            errorMessage = 'Sync already in progress. Please wait...';
+                            startStatusPolling();
                         }
                         
                         alert(errorMessage);
@@ -216,6 +219,133 @@
                     }
                 });
             });
+            
+            // Poll sync status
+            function startStatusPolling() {
+                if (syncPollingInterval) {
+                    clearInterval(syncPollingInterval);
+                }
+                
+                syncPollingInterval = setInterval(checkSyncStatus, 2000); // Poll every 2 seconds
+                checkSyncStatus(); // Check immediately
+            }
+            
+            function checkSyncStatus() {
+                $.ajax({
+                    url: '/api/gmail/sync-status',
+                    type: 'GET',
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                        'Accept': 'application/json',
+                    },
+                    success: function(response) {
+                        const status = response.data;
+                        console.log('Sync status:', status);
+                        
+                        if (status.status === 'processing') {
+                            updateSyncProgress(status);
+                        } else if (status.status === 'completed') {
+                            syncCompleted(status);
+                        } else if (status.status === 'failed') {
+                            syncFailed(status);
+                        } else if (status.status === 'idle') {
+                            // No sync in progress
+                            resetSyncButton();
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('Failed to check status:', xhr);
+                    }
+                });
+            }
+            
+            function updateSyncProgress(status) {
+                const processed = status.processed || 0;
+                const total = status.total_emails || 0;
+                const failed = status.failed || 0;
+                
+                let percentage = total > 0 ? Math.round((processed / total) * 100) : 0;
+                
+                $('#syncBtnText').text(`Syncing... ${processed}/${total}`);
+                
+                // Update stats in real-time
+                if (processed > 0) {
+                    updateEmailCount();
+                }
+            }
+            
+            function syncCompleted(status) {
+                clearInterval(syncPollingInterval);
+                syncPollingInterval = null;
+                
+                const $syncIcon = $('#syncIcon');
+                const $btnText = $('#syncBtnText');
+                const $btn = $('#syncGmailBtn');
+                
+                $syncIcon.removeClass('animate-spin');
+                $btnText.text('Sync Complete!');
+                
+                // Update email count
+                updateEmailCount();
+                
+                const processed = status.processed || 0;
+                const failed = status.failed || 0;
+                
+                alert(`Successfully synced ${processed} emails!${failed > 0 ? ` (${failed} failed)` : ''}`);
+                
+                // Re-enable button and update text
+                setTimeout(function() {
+                    $btn.prop('disabled', false);
+                    $btnText.text('Sync Now');
+                }, 3000);
+            }
+            
+            function syncFailed(status) {
+                clearInterval(syncPollingInterval);
+                syncPollingInterval = null;
+                
+                const $syncIcon = $('#syncIcon');
+                const $btnText = $('#syncBtnText');
+                const $btn = $('#syncGmailBtn');
+                
+                $syncIcon.removeClass('animate-spin');
+                $btn.prop('disabled', false);
+                $btnText.text('Sync Now');
+                
+                alert('Sync failed: ' + (status.error || 'Unknown error'));
+                console.error('Sync error:', status);
+            }
+            
+            function resetSyncButton() {
+                if (syncPollingInterval) {
+                    clearInterval(syncPollingInterval);
+                    syncPollingInterval = null;
+                }
+                
+                const $syncIcon = $('#syncIcon');
+                const $btnText = $('#syncBtnText');
+                const $btn = $('#syncGmailBtn');
+                
+                $syncIcon.removeClass('animate-spin');
+                $btn.prop('disabled', false);
+                $btnText.text('Sync Now');
+            }
+            
+            function updateEmailCount() {
+                // Fetch updated email count
+                $.ajax({
+                    url: '/api/user',
+                    type: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                    },
+                    success: function(response) {
+                        // Refresh the count via page reload or update dynamically
+                        // For now, we'll just increment (proper way would be to fetch from API)
+                        location.reload();
+                    }
+                });
+            }
         });
     </script>
 @endpush

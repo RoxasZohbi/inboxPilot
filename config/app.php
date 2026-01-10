@@ -17,6 +17,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Gmail Sync Limit
+    |--------------------------------------------------------------------------
+    |
+    | Maximum number of emails to sync per user. Set to 0 for unlimited.
+    | For MVP, we limit to 500 emails to prevent long-running jobs.
+    |
+    */
+
+    'gmail_sync_limit' => env('GMAIL_SYNC_LIMIT', 500),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------
     |

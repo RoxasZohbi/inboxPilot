@@ -34,40 +34,90 @@ class GmailService
      */
     public function setAccessToken(User $user): void
     {
-        $accessToken = [
-            'access_token' => $user->google_token,
-            'refresh_token' => $user->google_refresh_token ?? null,
-            'expires_in' => 3600,
-            'created' => time(),
-        ];
-        
-        $this->client->setAccessToken($accessToken);
-        
-        // Refresh token if expired
-        if ($this->client->isAccessTokenExpired()) {
-            if ($refreshToken = $user->google_refresh_token) {
-                $this->client->fetchAccessTokenWithRefreshToken($refreshToken);
-                $newToken = $this->client->getAccessToken();
-                
-                // Update user's token
-                $user->update([
-                    'google_token' => $newToken['access_token'] ?? null,
-                ]);
+        // Check if user has tokens
+        if (!$user->google_token) {
+            throw new \Exception('No Google OAuth token found. Please sign in with Google.');
+        }
+
+        if (!$user->google_refresh_token) {
+            throw new \Exception('No refresh token available. Please sign in with Google again to grant offline access.');
+        }
+
+        // Always refresh the token to ensure it's valid
+        try {
+            Log::info("Refreshing token for user {$user->id}");
+            Log::info("Refresh token (first 20 chars): " . substr($user->google_refresh_token, 0, 20));
+            
+            // Refresh the access token
+            $newToken = $this->client->fetchAccessTokenWithRefreshToken($user->google_refresh_token);
+            
+            Log::info("Token response received: " . json_encode(array_keys($newToken)));
+            
+            // Check for errors
+            if (isset($newToken['error'])) {
+                Log::error("Token refresh error for user {$user->id}: " . json_encode($newToken));
+                throw new \Exception('Token refresh failed: ' . ($newToken['error_description'] ?? $newToken['error']));
             }
+            
+            // Verify we got an access token
+            if (!isset($newToken['access_token'])) {
+                Log::error("No access_token in response: " . json_encode($newToken));
+                throw new \Exception('Token refresh did not return an access token');
+            }
+            
+            Log::info("New access token (first 20 chars): " . substr($newToken['access_token'], 0, 20));
+            
+            // Update user's token in database
+            $user->update([
+                'google_token' => $newToken['access_token'],
+                'google_refresh_token' => $newToken['refresh_token'] ?? $user->google_refresh_token,
+            ]);
+            
+            // Important: Set the token on the client
+            $this->client->setAccessToken($newToken);
+            
+            // Verify token is set
+            $currentToken = $this->client->getAccessToken();
+            Log::info("Token set on client. Has access_token: " . (isset($currentToken['access_token']) ? 'yes' : 'no'));
+            
+            Log::info("Token refreshed and set successfully for user {$user->id}");
+            
+        } catch (\Exception $e) {
+            Log::error("Token refresh exception for user {$user->id}: " . $e->getMessage());
+            Log::error("Stack trace: " . $e->getTraceAsString());
+            throw new \Exception('Failed to refresh Google token. Please sign in with Google again.');
         }
         
+        // Initialize Gmail service with authenticated client
         $this->service = new Gmail($this->client);
     }
     
     /**
      * Fetch all emails from user's Gmail account
+     * 
+     * @param int $maxResults Maximum number of emails to fetch
+     * @param \DateTimeInterface|null $lastSyncedAt Fetch only emails after this date
      */
-    public function fetchEmails(int $maxResults = 100): array
+    public function fetchEmails(int $maxResults = 100, ?\DateTimeInterface $lastSyncedAt = null): array
     {
         try {
+            Log::info("Starting fetchEmails with maxResults={$maxResults}");
+            
+            // Verify client has a valid token
+            $token = $this->client->getAccessToken();
+            Log::info("Client token status: " . (isset($token['access_token']) ? 'has token' : 'NO TOKEN'));
+            
             $emails = [];
             $pageToken = null;
             $totalFetched = 0;
+            
+            // Build query for incremental sync
+            $query = '';
+            if ($lastSyncedAt) {
+                // Gmail date format: after:YYYY/MM/DD
+                $query = 'after:' . $lastSyncedAt->format('Y/m/d');
+            }
+
             
             do {
                 $params = [
@@ -75,6 +125,12 @@ class GmailService
                     'pageToken' => $pageToken,
                 ];
                 
+                // Add query parameter for incremental sync
+                if ($query) {
+                    $params['q'] = $query;
+                }
+
+                Log::info("Calling Gmail API with params: " . json_encode($params));
                 $messagesResponse = $this->service->users_messages->listUsersMessages('me', $params);
                 $messages = $messagesResponse->getMessages();
                 

@@ -18,6 +18,8 @@ class GoogleAuthController extends Controller
         /** @var \Laravel\Socialite\Two\GoogleProvider $provider */
         $provider = Socialite::driver('google');
         return $provider
+            ->stateless()
+            ->with(['access_type' => 'offline', 'prompt' => 'consent'])
             ->scopes([
                 'https://www.googleapis.com/auth/gmail.readonly',
                 'https://www.googleapis.com/auth/gmail.modify',
@@ -31,7 +33,11 @@ class GoogleAuthController extends Controller
     public function handleGoogleCallback()
     {
         try {
-            $googleUser = Socialite::driver('google')->user();
+            /** @var \Laravel\Socialite\Two\GoogleProvider $provider */
+            $provider = Socialite::driver('google');
+            $googleUser = $provider
+                ->stateless()
+                ->user();
             
             // Find or create the user
             $user = User::where('google_id', $googleUser->getId())

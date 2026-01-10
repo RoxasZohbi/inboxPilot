@@ -27,6 +27,7 @@ class User extends Authenticatable
         'avatar',
         'google_token',
         'google_refresh_token',
+        'last_synced_at',
     ];
 
     /**
@@ -51,6 +52,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'last_synced_at' => 'datetime',
         ];
     }
 
@@ -60,5 +62,29 @@ class User extends Authenticatable
     public function categories(): HasMany
     {
         return $this->hasMany(Category::class);
+    }
+
+    /**
+     * Get the emails for the user.
+     */
+    public function emails(): HasMany
+    {
+        return $this->hasMany(Email::class);
+    }
+
+    /**
+     * Get the count of unread emails.
+     */
+    public function unreadEmailsCount(): int
+    {
+        return $this->emails()->unread()->count();
+    }
+
+    /**
+     * Get the total count of emails.
+     */
+    public function totalEmailsCount(): int
+    {
+        return $this->emails()->count();
     }
 }
