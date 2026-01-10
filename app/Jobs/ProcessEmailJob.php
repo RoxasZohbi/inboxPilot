@@ -33,25 +33,6 @@ class ProcessEmailJob implements ShouldQueue
         $cacheKey = "gmail_sync:{$this->user->id}";
         
         try {
-            // Check if user has reached email limit (MVP safety check)
-            $syncLimit = config('app.gmail_sync_limit', 500);
-            if ($syncLimit > 0) {
-                $currentCount = \App\Models\Email::where('user_id', $this->user->id)->count();
-                
-                if ($currentCount >= $syncLimit) {
-                    Log::info("User {$this->user->id} reached email limit ({$syncLimit}). Skipping email processing.");
-                    
-                    // Mark sync as completed with limit message
-                    $syncStatus = Cache::get($cacheKey, []);
-                    $syncStatus['status'] = 'completed';
-                    $syncStatus['completed_at'] = now()->toIso8601String();
-                    $syncStatus['message'] = "Reached maximum email limit ({$syncLimit} emails for MVP)";
-                    Cache::put($cacheKey, $syncStatus, now()->addHours(1));
-                    
-                    return;
-                }
-            }
-            
             // Extract sender name and email from "from" field
             $fromParts = $this->parseFromField($this->emailData['from']);
 

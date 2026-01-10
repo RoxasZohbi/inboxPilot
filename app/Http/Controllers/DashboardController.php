@@ -16,12 +16,10 @@ class DashboardController extends Controller
         // Auto-start sync if:
         // 1. User has Google token (Gmail connected)
         // 2. No sync is currently running
-        // 3. Last synced > 1 hour ago OR never synced
-        // dd($user->google_token,  !Cache::has("gmail_sync:{$user->id}"), [!$user->last_synced_at , $user->last_synced_at->diffInHours(now()) >= 1]);
-        Log::info(json_encode([$user->google_token,  !Cache::has("gmail_sync:{$user->id}"), [!$user->last_synced_at , $user->last_synced_at ?$user->last_synced_at->diffInHours(now()) >= 1:null]]));
+        // 3. Last synced > 5 minutes ago OR never synced
         if ($user->google_token && 
             !Cache::has("gmail_sync:{$user->id}") &&
-            (!$user->last_synced_at || $user->last_synced_at->diffInHours(now()) >= 1)) {
+            (!$user->last_synced_at || $user->last_synced_at->diffInMinutes(now()) >= 5)) {
             
             $syncLimit = config('app.gmail_sync_limit', 500);
             SyncGmailEmailsJob::dispatch($user, $syncLimit);

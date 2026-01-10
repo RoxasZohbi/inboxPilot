@@ -80,17 +80,44 @@ class SyncGmailEmailsJob implements ShouldQueue
             Log::info("Starting Gmail sync for user {$this->user->id}. Current: {$currentEmailCount}, Limit: {$syncLimit}, Will fetch: {$this->maxResults}");
             $emails = $gmailService->fetchEmails($this->maxResults, $this->user->last_synced_at);
             
+            if (empty($emails)) {
+                Log::info("No new emails to sync for user {$this->user->id}");
+                
+                Cache::put($cacheKey, [
+                    'status' => 'completed',
+                    'total_emails' => 0,
+                    'processed' => 0,
+                    'failed' => 0,
+                    'started_at' => now()->toIso8601String(),
+                    'completed_at' => now()->toIso8601String(),
+                    'message' => 'No new emails to sync',
+                ], now()->addHours(1));
+                
+                return;
+            }
+            
             Log::info("Fetched " . count($emails) . " emails for user {$this->user->id}");
 
-            // Update total count
+            // Determine how many jobs to actually dispatch (respect limit)
+            $jobsToDispatch = count($emails);
+            if ($syncLimit > 0) {
+                $jobsToDispatch = min($jobsToDispatch, $syncLimit - $currentEmailCount);
+            }
+
+            // Update cache with actual job count
             Cache::put($cacheKey, array_merge(Cache::get($cacheKey, []), [
-                'total_emails' => count($emails),
+                'total_emails' => $jobsToDispatch,
             ]), now()->addHours(1));
 
             // Dispatch individual processing jobs with rate limiting
-            foreach ($emails as $index => $emailData) {
-                ProcessEmailJob::dispatch($this->user, $emailData)
+            // STOP dispatching when we reach the limit
+            for ($index = 0; $index < $jobsToDispatch; $index++) {
+                ProcessEmailJob::dispatch($this->user, $emails[$index])
                     ->delay(now()->addSeconds($index * 0.5)); // 0.5 second delay between jobs
+            }
+            
+            if ($jobsToDispatch < count($emails)) {
+                Log::info("Stopped dispatching at {$jobsToDispatch} jobs (limit reached) out of " . count($emails) . " fetched emails for user {$this->user->id}");
             }
 
             Log::info("Gmail sync initiated for user {$this->user->id}: " . count($emails) . " emails queued");
