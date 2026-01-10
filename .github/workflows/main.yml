@@ -1,0 +1,112 @@
+name: CI/CD Deploy Laravel to EC2
+on:
+  push:
+    branches:
+      - dev
+      - main
+
+env:
+  DEPLOY_BUCKET: ${{ vars.DEPLOY_BUCKET }}
+  INSTANCE_ID: ${{ vars.INSTANCE_ID }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2️⃣ Set up PHP (Laravel)
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo, pdo_pgsql, xml, curl, bcmath, json
+          coverage: none
+
+      # 3️⃣ Optional: validate composer.lock
+      - name: Validate Composer
+        run: composer install --no-dev --dry-run --ignore-platform-reqs
+
+      # 4️⃣ Package project into zip (exclude vendor, node_modules, .git)
+      - name: Archive Laravel project
+        run: zip -r project.zip . -x "vendor/*" ".git/*" "node_modules/*" "project.zip"
+
+      # 5️⃣ Upload artifact to GitHub
+      # - name: Upload build artifact
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: laravel-project
+      #     path: project.zip
+
+      # 6️⃣ Configure AWS credentials
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      # 7️⃣ Backup previous build in S3
+      - name: Backup previous build
+        run: |
+          aws s3 cp s3://$DEPLOY_BUCKET/latest/project.zip s3://$DEPLOY_BUCKET/old/project.zip || echo "No previous build to back up"
+
+      # 8️⃣ Upload new build to S3
+      - name: Upload new build to S3
+        run: aws s3 cp project.zip s3://$DEPLOY_BUCKET/latest/project.zip
+
+      # 9️⃣ Deploy via SSM to EC2
+      - name: Deploy via SSM
+        run: |
+          set -e
+          echo "🚀 Sending SSM command..."
+
+          COMMAND_ID=$(aws ssm send-command \
+            --targets "Key=instanceIds,Values=$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploy Laravel project" \
+            --parameters 'commands=[
+              "set -e",
+              "echo Starting Laravel deployment...",
+              "sudo -u ubuntu -i aws s3 cp s3://'$DEPLOY_BUCKET'/latest/project.zip /tmp/project.zip",
+              "sudo unzip -o /tmp/project.zip -d /var/www/inboxPilot",
+              "sudo COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader -d /var/www/inboxPilot",
+              "sudo -u ubuntu -i bash -c \"cd /var/www/inboxPilot && php artisan migrate --force\"",
+              "sudo -u ubuntu -i bash -c \"cd /var/www/inboxPilot && sudo npm ci && sudo npm run build  && php artisan config:clear && php artisan cache:clear && php artisan route:clear && php artisan view:clear && sudo supervisorctl restart laravel-queue:* \"",
+              "sudo chown -R www-data:www-data /var/www/inboxPilot",
+              "sudo chmod -R 775 /var/www/inboxPilot/storage /var/www/inboxPilot/bootstrap/cache",
+              "sudo systemctl restart php8.3-fpm",
+              "sudo systemctl restart nginx"
+            ]' \
+            --query "Command.CommandId" \
+            --output text)
+
+          echo "✅ Command sent. ID: $COMMAND_ID"
+          echo "⏳ Waiting for command to complete..."
+
+          STATUS="InProgress"
+          while [ "$STATUS" == "InProgress" ] || [ "$STATUS" == "Pending" ]; do
+            sleep 5
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query "Status" \
+              --output text)
+            echo "Current status: $STATUS"
+          done
+
+          echo "🧾 Final Status: $STATUS"
+
+          aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$INSTANCE_ID" \
+            --query '{Status:Status, StdOut:StandardOutputContent, StdErr:StandardErrorContent}' \
+            --output json
+
+          if [ "$STATUS" != "Success" ]; then
+            echo "❌ Deployment failed via SSM"
+            exit 1
+          fi
