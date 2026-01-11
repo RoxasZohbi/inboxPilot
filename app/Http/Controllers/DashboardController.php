@@ -25,6 +25,13 @@ class DashboardController extends Controller
             SyncGmailEmailsJob::dispatch($user, $syncLimit);
         }
         
-        return view('dashboard.index');
+        // Fetch user's categories with email counts
+        $categories = $user->categories()
+            ->withCount('emails')
+            ->orderBy('priority', 'desc')
+            ->orderBy('name')
+            ->get();
+        
+        return view('dashboard.index', compact('categories'));
     }
 }
