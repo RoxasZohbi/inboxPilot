@@ -38,7 +38,12 @@ class CategoryController extends Controller
      */
     public function store(StoreCategoryRequest $request): RedirectResponse
     {
-        Auth::user()?->categories()->create($request->validated());
+        $data = $request->validated();
+        
+        // Handle checkbox: if not present in request, set to false
+        $data['archive_after_processing'] = $request->has('archive_after_processing');
+        
+        Auth::user()?->categories()->create($data);
 
         return redirect()->route('categories.index')
             ->with('success', 'Category created successfully.');
@@ -81,7 +86,12 @@ class CategoryController extends Controller
             abort(403);
         }
 
-        $category->update($request->validated());
+        $data = $request->validated();
+        
+        // Handle checkbox: if not present in request, set to false
+        $data['archive_after_processing'] = $request->has('archive_after_processing');
+
+        $category->update($data);
 
         return redirect()->route('categories.index')
             ->with('success', 'Category updated successfully.');

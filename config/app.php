@@ -135,4 +135,29 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Gmail Sync Limit
+    |--------------------------------------------------------------------------
+    |
+    | Maximum number of emails to sync from Gmail per user. Set to 0 for
+    | unlimited. This helps control storage and API usage.
+    |
+    */
+
+    'gmail_sync_limit' => env('GMAIL_SYNC_LIMIT', 500),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Gmail Auto Archive
+    |--------------------------------------------------------------------------
+    |
+    | Automatically archive emails in Gmail after successful AI processing.
+    | When enabled, emails will be removed from inbox but remain accessible
+    | in All Mail. Archives only if category has archive_after_processing=true.
+    |
+    */
+
+    'gmail_auto_archive' => env('GMAIL_AUTO_ARCHIVE', false),
+
 ];

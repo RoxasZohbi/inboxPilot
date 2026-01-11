@@ -21,6 +21,7 @@ class Category extends Model
         'priority',
         'name',
         'description',
+        'archive_after_processing',
     ];
 
     /**

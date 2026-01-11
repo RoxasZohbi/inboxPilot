@@ -88,6 +88,36 @@
                 @enderror
             </div>
 
+            <!-- Archive After Processing Checkbox -->
+            <div class="mb-8">
+                <div class="bg-purple-900/10 rounded-xl p-6 border border-purple-900/50">
+                    <div class="flex items-start">
+                        <div class="flex items-center h-5">
+                            <input type="checkbox" 
+                                   name="archive_after_processing" 
+                                   id="archive_after_processing" 
+                                   value="1"
+                                   {{ old('archive_after_processing', $category->archive_after_processing) ? 'checked' : '' }}
+                                   class="w-5 h-5 bg-gray-800 border-gray-700 rounded text-purple-600 focus:ring-purple-500 focus:ring-offset-gray-900 focus:ring-2 cursor-pointer">
+                        </div>
+                        <div class="ml-4">
+                            <label for="archive_after_processing" class="text-sm font-semibold text-gray-300 cursor-pointer">
+                                Auto-Archive After Processing
+                            </label>
+                            <p class="mt-1 text-sm text-gray-400">
+                                <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+                                </svg>
+                                Emails in this category will be automatically archived in Gmail after successful AI processing (remains accessible in All Mail)
+                            </p>
+                        </div>
+                    </div>
+                    @error('archive_after_processing')
+                        <p class="mt-2 text-sm text-red-400">{{ $message }}</p>
+                    @enderror
+                </div>
+            </div>
+
             <!-- Action Buttons -->
             <div class="flex items-center justify-end gap-4 pt-6 border-t border-gray-800">
                 <a href="{{ route('categories.index') }}" 

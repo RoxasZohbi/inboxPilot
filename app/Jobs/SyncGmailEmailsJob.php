@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\User;
+use App\Models\Email;
 use App\Services\GmailService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -49,7 +50,7 @@ class SyncGmailEmailsJob implements ShouldQueue
             $gmailService->setAccessToken($this->user);
 
             // Check current email count
-            $currentEmailCount = \App\Models\Email::where('user_id', $this->user->id)->count();
+            $currentEmailCount = Email::where('user_id', $this->user->id)->count();
             $syncLimit = config('app.gmail_sync_limit', 500);
             
             // Calculate how many more emails we can fetch
@@ -68,6 +69,12 @@ class SyncGmailEmailsJob implements ShouldQueue
                         'completed_at' => now()->toIso8601String(),
                         'message' => "Already at email limit ({$syncLimit} emails)",
                     ], now()->addHours(1));
+                    
+                    // Update user's last sync time
+                    $this->user->update(['last_synced_at' => now()]);
+                    
+                    // Still process pending emails with AI
+                    $this->dispatchAIProcessingForPendingEmails();
                     
                     return;
                 }
@@ -92,6 +99,12 @@ class SyncGmailEmailsJob implements ShouldQueue
                     'completed_at' => now()->toIso8601String(),
                     'message' => 'No new emails to sync',
                 ], now()->addHours(1));
+                
+                // Update user's last sync time
+                $this->user->update(['last_synced_at' => now()]);
+                
+                // Still process pending emails with AI
+                $this->dispatchAIProcessingForPendingEmails();
                 
                 return;
             }
@@ -132,6 +145,34 @@ class SyncGmailEmailsJob implements ShouldQueue
             ]), now()->addHours(1));
 
             throw $e;
+        }
+    }
+
+    /**
+     * Dispatch AI processing jobs for emails that need processing
+     */
+    protected function dispatchAIProcessingForPendingEmails(): void
+    {
+        try {
+            // Get all emails that need AI processing (pending or null status)
+            $pendingEmails = Email::where('user_id', $this->user->id)
+                ->where(function ($query) {
+                    $query->whereNull('status')
+                          ->orWhere('status', 'pending');
+                })
+                ->whereNull('processed_at')
+                ->get();
+
+            Log::info("Dispatching AI processing for {$pendingEmails->count()} pending emails for user {$this->user->id}");
+
+            // Dispatch AI jobs for each pending email
+            foreach ($pendingEmails as $email) {
+                ProcessEmailWithAIJob::dispatch($email);
+            }
+
+        } catch (\Exception $e) {
+            Log::error("Failed to dispatch AI processing jobs for user {$this->user->id}: {$e->getMessage()}");
+            // Don't throw - this is not critical enough to fail the main job
         }
     }
 

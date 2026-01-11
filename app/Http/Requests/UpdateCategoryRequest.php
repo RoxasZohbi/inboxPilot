@@ -34,6 +34,7 @@ class UpdateCategoryRequest extends FormRequest
             ],
             'priority' => 'required|integer|min:1|max:10',
             'description' => 'required|string|max:1000',
+            'archive_after_processing' => 'nullable|boolean',
         ];
     }
 

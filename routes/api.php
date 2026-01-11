@@ -35,7 +35,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Category API endpoints
-    Route::apiResource('categories', CategoryController::class);
+    // Route::apiResource('categories', CategoryController::class);
     
     // Gmail API endpoints
     Route::post('/gmail/sync', [GmailController::class, 'syncEmails']);

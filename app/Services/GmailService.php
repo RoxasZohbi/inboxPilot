@@ -280,4 +280,29 @@ class GmailService
     {
         return base64_decode(strtr($data, '-_', '+/'));
     }
+
+    /**
+     * Archive an email by removing the INBOX label
+     * 
+     * @param string $messageId Gmail message ID
+     * @return bool Success status
+     */
+    public function archiveEmail(string $messageId): bool
+    {
+        try {
+            Log::info("Archiving email {$messageId} in Gmail");
+
+            $modifyRequest = new \Google\Service\Gmail\ModifyMessageRequest();
+            $modifyRequest->setRemoveLabelIds(['INBOX']);
+            
+            $this->service->users_messages->modify('me', $messageId, $modifyRequest);
+            
+            Log::info("Successfully archived email {$messageId} in Gmail");
+            return true;
+            
+        } catch (\Exception $e) {
+            Log::error("Failed to archive email {$messageId} in Gmail: {$e->getMessage()}");
+            return false;
+        }
+    }
 }

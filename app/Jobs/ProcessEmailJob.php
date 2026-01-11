@@ -72,6 +72,9 @@ class ProcessEmailJob implements ShouldQueue
                 
                 // Update user's last sync time on completion
                 $this->user->update(['last_synced_at' => now()]);
+                
+                // Dispatch AI processing jobs for pending emails
+                $this->dispatchAIProcessingJobs();
             }
             
             Cache::put($cacheKey, $syncStatus, now()->addHours(1));
@@ -85,6 +88,34 @@ class ProcessEmailJob implements ShouldQueue
             Cache::put($cacheKey, $syncStatus, now()->addHours(1));
 
             throw $e;
+        }
+    }
+
+    /**
+     * Dispatch AI processing jobs for emails that need processing
+     */
+    protected function dispatchAIProcessingJobs(): void
+    {
+        try {
+            // Get all emails that need AI processing (pending or null status)
+            $pendingEmails = Email::where('user_id', $this->user->id)
+                ->where(function ($query) {
+                    $query->whereNull('status')
+                          ->orWhere('status', 'pending');
+                })
+                ->whereNull('processed_at')
+                ->get();
+
+            Log::info("Dispatching AI processing for {$pendingEmails->count()} pending emails for user {$this->user->id}");
+
+            // Dispatch AI jobs for each pending email
+            foreach ($pendingEmails as $email) {
+                ProcessEmailWithAIJob::dispatch($email);
+            }
+
+        } catch (\Exception $e) {
+            Log::error("Failed to dispatch AI processing jobs for user {$this->user->id}: {$e->getMessage()}");
+            // Don't throw - this is not critical enough to fail the main job
         }
     }
 
