@@ -70,46 +70,129 @@
         </div>
     </div>
 
+    <!-- Filters and Search -->
+    <div class="bg-gray-900 rounded-xl p-6 border border-gray-800 shadow-xl mb-6">
+        <form method="GET" action="{{ route('categories.show', $category) }}" class="flex flex-col md:flex-row gap-4">
+            <!-- Search Field -->
+            <div class="flex-1">
+                <div class="relative">
+                    <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                    <input type="text" 
+                           name="search" 
+                           value="{{ request('search') }}" 
+                           placeholder="Search emails by subject, sender, or content..." 
+                           class="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+            </div>
+
+            <!-- Filter: Starred -->
+            <div class="flex items-center gap-2 px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg">
+                <input type="checkbox" 
+                       name="starred" 
+                       id="starred" 
+                       value="1" 
+                       {{ request('starred') === '1' ? 'checked' : '' }}
+                       class="w-4 h-4 bg-gray-700 border-gray-600 rounded text-yellow-500 focus:ring-yellow-500 focus:ring-offset-gray-900 focus:ring-2">
+                <label for="starred" class="text-sm text-gray-300 cursor-pointer flex items-center gap-2">
+                    <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                    </svg>
+                    Starred Only
+                </label>
+            </div>
+
+            <!-- Filter: Has Attachments -->
+            <div class="flex items-center gap-2 px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg">
+                <input type="checkbox" 
+                       name="has_attachments" 
+                       id="has_attachments" 
+                       value="1" 
+                       {{ request('has_attachments') === '1' ? 'checked' : '' }}
+                       class="w-4 h-4 bg-gray-700 border-gray-600 rounded text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900 focus:ring-2">
+                <label for="has_attachments" class="text-sm text-gray-300 cursor-pointer flex items-center gap-2">
+                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                    </svg>
+                    With Attachments
+                </label>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" 
+                    class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
+                Apply Filters
+            </button>
+
+            <!-- Clear Filters -->
+            @if(request()->hasAny(['search', 'starred', 'has_attachments']))
+                <a href="{{ route('categories.show', $category) }}" 
+                   class="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white rounded-lg border border-gray-700 transition-colors font-medium text-center">
+                    Clear
+                </a>
+            @endif
+        </form>
+    </div>
+
     <!-- Emails Section -->
     <x-email-list 
         title="Categorized Emails"
         description="Emails that match this category"
-        :total-emails="247"
-        :current-page="1"
-        :total-pages="83"
-        :per-page="3">
+        :total-emails="$emails->total()"
+        :current-page="$emails->currentPage()"
+        :total-pages="$emails->lastPage()"
+        :per-page="$emails->perPage()"
+        :paginator="$emails">
         <x-slot:emails>
-            <x-email-item 
-                sender="John Doe"
-                email="john.doe@company.com"
-                subject="Q4 Financial Report - Action Required"
-                preview="Hello team, please find attached the Q4 financial report for your review. We need your feedback by end of this week..."
-                date="2 hours ago"
-                :is-read="false"
-                :has-attachment="true"
-                avatar-color="from-blue-500 to-purple-600" />
+            @forelse($emails as $email)
+                <div class="cursor-pointer hover:bg-gray-800/50 transition-colors rounded-lg" 
+                     x-data 
+                     @click="$dispatch('open-email-modal', { emailId: {{ $email->id }} })">
+                    <div class="flex items-start gap-4 p-4">
+                        <!-- Checkbox -->
+                        <div class="flex items-center pt-1" @click.stop>
+                            <input type="checkbox" 
+                                   name="email_ids[]" 
+                                   value="{{ $email->id }}"
+                                   class="w-4 h-4 bg-gray-800 border-gray-700 rounded text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900 focus:ring-2">
+                        </div>
 
-            <x-email-item 
-                sender="Sarah Miller"
-                email="sarah.miller@email.com"
-                subject="Meeting Notes from Monday's Discussion"
-                preview="Hi everyone, here are the key takeaways from our meeting on Monday. Please review and let me know if I missed anything..."
-                date="Yesterday"
-                :is-read="true"
-                :is-starred="true"
-                avatar-color="from-green-500 to-emerald-600" />
-
-            <x-email-item 
-                sender="Michael Johnson"
-                email="m.johnson@business.com"
-                subject="Project Update - Phase 2 Complete"
-                preview="Great news! We've successfully completed Phase 2 of the project ahead of schedule. Here's a summary of what we accomplished..."
-                date="Jan 8"
-                :is-read="true"
-                :has-attachment="true"
-                :attachment-count="2"
-                avatar-color="from-purple-500 to-pink-600" />
+                        <!-- Email Item Content -->
+                        <div class="flex-1">
+                            <x-email-item 
+                                sender="{{ $email->from_name ?? 'Unknown' }}"
+                                email="{{ $email->from_email ?? '' }}"
+                                subject="{{ $email->subject ?? 'No Subject' }}"
+                                preview="{{ $email->ai_summary ?? ($email->snippet ?? 'No preview available') }}"
+                                date="{{ $email->date ? $email->date->diffForHumans() : 'Unknown date' }}"
+                                :is-read="!$email->is_unread"
+                                :is-starred="!!$email->is_starred"
+                                :has-attachment="!!$email->has_attachments"
+                                :attachment-count="0"
+                                avatar-color="from-purple-500 to-pink-600" />
+                        </div>
+                    </div>
+                </div>
+            @empty
+                <div class="text-center py-12">
+                    <svg class="w-16 h-16 mx-auto text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                    </svg>
+                    <h3 class="text-lg font-medium text-gray-400 mb-2">No Emails Found</h3>
+                    <p class="text-gray-500">
+                        @if(request()->hasAny(['search', 'starred', 'has_attachments']))
+                            Try adjusting your filters or search query
+                        @else
+                            Emails categorized as "{{ $category->name }}" will appear here
+                        @endif
+                    </p>
+                </div>
+            @endforelse
         </x-slot:emails>
     </x-email-list>
+
+    <!-- Email Detail Modal -->
+    <x-email-detail-modal />
 </div>
 @endsection

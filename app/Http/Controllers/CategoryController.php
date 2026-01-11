@@ -59,7 +59,34 @@ class CategoryController extends Controller
             abort(403);
         }
 
-        return view('categories.show', compact('category'));
+        // Build query for emails
+        $query = $category->emails()->with('user');
+
+        // Apply search filter
+        if (request('search')) {
+            $search = request('search');
+            $query->where(function($q) use ($search) {
+                $q->where('subject', 'ilike', "%{$search}%")
+                  ->orWhere('from_email', 'ilike', "%{$search}%")
+                  ->orWhere('from_name', 'ilike', "%{$search}%")
+                  ->orWhere('snippet', 'ilike', "%{$search}%");
+            });
+        }
+
+        // Apply starred filter
+        if (request('starred') === '1') {
+            $query->where('is_starred', 1);
+        }
+
+        // Apply has attachments filter
+        if (request('has_attachments') === '1') {
+            $query->where('has_attachments', 1);
+        }
+
+        // Order by date descending
+        $emails = $query->orderBy('date', 'desc')->paginate(10);
+
+        return view('categories.show', compact('category', 'emails'));
     }
 
     /**

@@ -41,7 +41,6 @@ class OpenAIService
             $prompt = $this->buildCategorizationPrompt($email, $categoriesList);
 
             Log::info("Sending categorization request to OpenAI for email {$email->id}");
-            Log::info("buildCategorizationPrompt ==> {$prompt}");
 
             // Call OpenAI API
             $response = OpenAI::chat()->create([
@@ -117,7 +116,6 @@ class OpenAIService
             $prompt = $this->buildSummaryPrompt($email, $emailContent);
 
             Log::info("Sending summary request to OpenAI for email {$email->id}");
-            Log::info("buildSummaryPrompt ==> {$prompt}");
 
             // Call OpenAI API
             $response = OpenAI::chat()->create([

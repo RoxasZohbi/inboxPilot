@@ -56,7 +56,7 @@
             
             <!-- Preview -->
             @if($preview)
-                <p class="{{ $isRead ? 'text-gray-500' : 'text-gray-400' }} text-sm line-clamp-2 mb-3">
+                <p class="{{ $isRead ? 'text-gray-500' : 'text-gray-400' }} text-sm mb-3">
                     {{ $preview }}
                 </p>
             @endif

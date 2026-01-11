@@ -3,7 +3,6 @@
     'description' => 'Emails that match this category',
     'showSearch' => true,
     'showFilter' => true,
-    'emails' => [],
     'emptyTitle' => 'No emails yet',
     'emptyDescription' => 'Emails matching this category will appear here',
     'showPagination' => true,
@@ -11,6 +10,7 @@
     'totalPages' => 1,
     'totalEmails' => 0,
     'perPage' => 10,
+    'paginator' => null,
 ])
 
 <div class="bg-gray-900 rounded-xl border border-gray-800 shadow-xl">
@@ -50,7 +50,7 @@
 
     <!-- Email List -->
     <div class="divide-y divide-gray-800">
-        @if($emails->isNotEmpty())
+        @if(isset($emails))
             {{ $emails }}
         @else
             <!-- Empty State -->
@@ -64,38 +64,10 @@
         @endif
     </div>
 
-    @if($showPagination && $emails->isNotEmpty())
+    @if($showPagination && $paginator && $paginator->hasPages())
         <!-- Pagination -->
         <div class="p-6 border-t border-gray-800">
-            <div class="flex items-center justify-between">
-                <p class="text-gray-400 text-sm">
-                    Showing {{ ($currentPage - 1) * $perPage + 1 }}-{{ min($currentPage * $perPage, $totalEmails) }} of {{ $totalEmails }} emails
-                </p>
-                <div class="flex items-center gap-2">
-                    <button class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-lg border border-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
-                            {{ $currentPage <= 1 ? 'disabled' : '' }}>
-                        Previous
-                    </button>
-                    
-                    @for($i = 1; $i <= min($totalPages, 5); $i++)
-                        <button class="px-4 py-2 rounded-lg border border-gray-700 transition-colors {{ $i == $currentPage ? 'bg-gray-800 text-white' : 'bg-gray-800 hover:bg-gray-700 text-gray-400' }}">
-                            {{ $i }}
-                        </button>
-                    @endfor
-                    
-                    @if($totalPages > 5)
-                        <span class="px-2 text-gray-500">...</span>
-                        <button class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-lg border border-gray-700 transition-colors">
-                            {{ $totalPages }}
-                        </button>
-                    @endif
-                    
-                    <button class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-lg border border-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            {{ $currentPage >= $totalPages ? 'disabled' : '' }}>
-                        Next
-                    </button>
-                </div>
-            </div>
+            {{ $paginator->appends(request()->query())->links() }}
         </div>
     @endif
 </div>

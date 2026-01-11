@@ -43,7 +43,7 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // Email API endpoints
     Route::get('/emails', [EmailController::class, 'index']);
-    Route::get('/emails/{id}', [EmailController::class, 'show']);
+    Route::get('/emails/{email}', [EmailController::class, 'show']);
     Route::patch('/emails/{id}/toggle-read', [EmailController::class, 'toggleRead']);
     Route::patch('/emails/{id}/toggle-star', [EmailController::class, 'toggleStar']);
     Route::delete('/emails/{id}', [EmailController::class, 'destroy']);

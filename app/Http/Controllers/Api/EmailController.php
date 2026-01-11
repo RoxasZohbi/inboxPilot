@@ -78,17 +78,19 @@ class EmailController extends Controller
     /**
      * Get a single email by ID
      */
-    public function show(int $id): JsonResponse
+    public function show(Email $email): JsonResponse
     {
         try {
-            $user = Auth::user();
+            // Ensure email belongs to authenticated user
+            if ($email->user_id !== Auth::id()) {
+                return response()->json([
+                    'message' => 'Email not found',
+                ], 404);
+            }
             
-            $email = $user->emails()->with('category')->findOrFail($id);
+            $email->load('category');
 
-            return response()->json([
-                'message' => 'Email retrieved successfully',
-                'data' => $email,
-            ], 200);
+            return response()->json($email, 200);
             
         } catch (\Exception $e) {
             return response()->json([

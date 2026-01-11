@@ -88,4 +88,12 @@ class Category extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    /**
+     * Get the emails for this category.
+     */
+    public function emails()
+    {
+        return $this->hasMany(Email::class);
+    }
 }
