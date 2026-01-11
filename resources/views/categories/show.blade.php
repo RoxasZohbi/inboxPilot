@@ -163,7 +163,7 @@
                                 sender="{{ $email->from_name ?? 'Unknown' }}"
                                 email="{{ $email->from_email ?? '' }}"
                                 subject="{{ $email->subject ?? 'No Subject' }}"
-                                preview="{{ $email->ai_summary ?? ($email->snippet ?? 'No preview available') }}"
+                                preview="{{ $email->ai_summary ?? 'No preview available' }}"
                                 date="{{ $email->created_at ? $email->created_at->diffForHumans() : 'Unknown date' }}"
                                 :is-read="!$email->is_unread"
                                 :is-starred="!!$email->is_starred"

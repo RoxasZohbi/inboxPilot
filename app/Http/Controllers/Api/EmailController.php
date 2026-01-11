@@ -90,7 +90,27 @@ class EmailController extends Controller
             
             $email->load('category');
 
-            return response()->json($email, 200);
+            return response()->json([
+                'id' => $email->id,
+                'subject' => $email->subject,
+                'from_name' => $email->from_name,
+                'from_email' => $email->from_email,
+                'to' => $email->to,
+                'date' => $email->date?->toIso8601String(),
+                'body' => text_to_html($email->body ?? ''),
+                'snippet' => $email->snippet,
+                'ai_summary' => $email->ai_summary,
+                'is_starred' => (bool) $email->is_starred,
+                'is_unread' => (bool) $email->is_unread,
+                'has_attachments' => (bool) $email->has_attachments,
+                'category' => $email->category ? [
+                    'id' => $email->category->id,
+                    'name' => $email->category->name,
+                    'priority' => $email->category->priority,
+                ] : null,
+                'created_at' => $email->created_at?->toIso8601String(),
+                'updated_at' => $email->updated_at?->toIso8601String(),
+            ], 200);
             
         } catch (\Exception $e) {
             return response()->json([
