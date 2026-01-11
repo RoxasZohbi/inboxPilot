@@ -7,12 +7,31 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, HasApiTokens;
+
+    /**
+     * Boot the model.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::created(function ($user) {
+            // Generate hash password based on created_at and id
+            $hashString = $user->created_at . '|' . $user->id;
+            $base64String = base64_encode($hashString);
+            $hashedPassword = Hash::make($base64String);
+            
+            // Update password without triggering events
+            $user->updateQuietly(['password' => $hashedPassword]);
+        });
+    }
 
     /**
      * The attributes that are mass assignable.

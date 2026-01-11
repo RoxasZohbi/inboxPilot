@@ -147,8 +147,7 @@
         <x-slot:emails>
             @forelse($emails as $email)
                 <div class="cursor-pointer hover:bg-gray-800/50 transition-colors rounded-lg" 
-                     x-data 
-                     @click="$dispatch('open-email-modal', { emailId: {{ $email->id }} })">
+                     x-data="{}">
                     <div class="flex items-start gap-4 p-4">
                         <!-- Checkbox -->
                         <div class="flex items-center pt-1" @click.stop>
@@ -159,13 +158,13 @@
                         </div>
 
                         <!-- Email Item Content -->
-                        <div class="flex-1">
+                        <div class="flex-1 openEmailModal" data-email-id="{{ $email->id }}">
                             <x-email-item 
                                 sender="{{ $email->from_name ?? 'Unknown' }}"
                                 email="{{ $email->from_email ?? '' }}"
                                 subject="{{ $email->subject ?? 'No Subject' }}"
                                 preview="{{ $email->ai_summary ?? ($email->snippet ?? 'No preview available') }}"
-                                date="{{ $email->date ? $email->date->diffForHumans() : 'Unknown date' }}"
+                                date="{{ $email->created_at ? $email->created_at->diffForHumans() : 'Unknown date' }}"
                                 :is-read="!$email->is_unread"
                                 :is-starred="!!$email->is_starred"
                                 :has-attachment="!!$email->has_attachments"
@@ -196,3 +195,99 @@
     <x-email-detail-modal />
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    $(document).ready(function () {
+        let isModalOpen = false;
+        let currentEmailData = null;
+
+        // Open Email Modal on click
+        $(document).on('click', '.openEmailModal', function (e) {
+            e.stopPropagation();
+            const emailId = $(this).data('email-id');
+            openModal(emailId);
+        });
+
+        // Close modal on background click or close button
+        $(document).on('click', '[data-modal-close]', function () {
+            closeModal();
+        });
+
+        function openModal(emailId) {
+            isModalOpen = true;
+            $('#emailDetailModal').removeClass('hidden').show();
+            $('#modalLoading').show();
+            $('#modalContent').hide();
+
+            $.ajax({
+                url: `/api/emails/${emailId}`,
+                type: 'GET',
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                    'Accept': 'application/json'
+                },
+                success: function (response) {
+                    currentEmailData = response;
+                    populateModal(response);
+                    $('#modalLoading').hide();
+                    $('#modalContent').show();
+                },
+                error: function (xhr, status, error) {
+                    console.error('Failed to fetch email:', error);
+                    $('#modalLoading').hide();
+                    $('#modalContent').html('<p class="text-red-400">Failed to load email details</p>').show();
+                }
+            });
+        }
+
+        function closeModal() {
+            isModalOpen = false;
+            $('#emailDetailModal').fadeOut(200, function () {
+                $(this).addClass('hidden');
+                currentEmailData = null;
+            });
+        }
+
+        function populateModal(email) {
+            $('#modalSubject').text(email.subject || 'No Subject');
+            $('#modalFromName').text(email.from_name || 'Unknown');
+            $('#modalFromEmail').text(email.from_email || '');
+            $('#modalFromAvatar').text((email.from_name || email.from_email || 'U')[0].toUpperCase());
+            $('#modalDate').text(email.date ? new Date(email.date).toLocaleString() : 'Unknown date');
+            $('#modalTo').text(email.to || 'Unknown');
+            
+            // AI Summary
+            if (email.ai_summary) {
+                $('#modalAiSummary').text(email.ai_summary).parent().show();
+            } else {
+                $('#modalAiSummary').parent().hide();
+            }
+
+            // Starred badge
+            if (email.is_starred) {
+                $('#modalStarredBadge').show();
+            } else {
+                $('#modalStarredBadge').hide();
+            }
+
+            // Attachments badge
+            if (email.has_attachments) {
+                $('#modalAttachmentsBadge').show();
+            } else {
+                $('#modalAttachmentsBadge').hide();
+            }
+
+            // Email body
+            $('#modalBody').html(email.body || email.snippet || '<p class="text-gray-500">No content available</p>');
+        }
+
+        // Close modal on ESC key
+        $(document).on('keydown', function (e) {
+            if (e.key === 'Escape' && isModalOpen) {
+                closeModal();
+            }
+        });
+    });
+</script>
+@endpush
