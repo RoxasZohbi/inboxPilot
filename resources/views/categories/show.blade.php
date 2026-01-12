@@ -201,10 +201,6 @@
     $(document).ready(function () {
         let isModalOpen = false;
         let currentEmailData = null;
-
-        // ============================================
-        // Bulk Delete Functionality
-        // ============================================
         
         // Track checkbox changes
         $(document).on('change', 'input[name="email_ids[]"]', function() {
