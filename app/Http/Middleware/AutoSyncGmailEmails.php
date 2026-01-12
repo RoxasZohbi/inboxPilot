@@ -36,6 +36,7 @@ class AutoSyncGmailEmails
                     $cacheKey = "gmail_sync:{$user->id}:{$account->id}";
                     
                     Log::info("Checking auto-sync conditions for Google account {$account->id}", [
+                        'cacheKey'=> $cacheKey,
                         'email' => $account->email,
                         'is_sync_running' => Cache::has($cacheKey),
                         'last_synced_at' => $account->last_synced_at ? $account->last_synced_at->toIso8601String() : null,

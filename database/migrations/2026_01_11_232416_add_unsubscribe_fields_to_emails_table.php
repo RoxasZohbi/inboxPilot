@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('emails', function (Blueprint $table) {
-            $table->tinyInteger('is_unsubscribe_available')->default(0)->after('ai_summary');
+            $table->tinyInteger('is_unsubscribe_available')->nullable()->after('ai_summary');
             $table->text('unsubscribe_url')->nullable()->after('is_unsubscribe_available');
         });
     }

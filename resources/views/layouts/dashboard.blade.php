@@ -67,6 +67,16 @@
                         </div>
                     </a>
 
+                    <a href="{{ route('unsubscribe.index') }}" 
+                       class="block px-4 py-3 rounded-lg transition-colors {{ request()->routeIs('unsubscribe.*') ? 'bg-gray-800 text-white border border-gray-700' : 'text-gray-400 hover:text-white hover:bg-gray-800' }}">
+                        <div class="flex items-center gap-3">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                            </svg>
+                            <span class="font-medium">Unsubscribe</span>
+                        </div>
+                    </a>
+
                     <!-- Add more menu items here -->
                 </nav>
             </div>

@@ -108,4 +108,12 @@ class Email extends Model
     {
         return $query->where('has_attachments', true);
     }
+
+    /**
+     * Scope a query to only include emails with unsubscribe available.
+     */
+    public function scopeWithUnsubscribe($query)
+    {
+        return $query->where('is_unsubscribe_available', 1);
+    }
 }
