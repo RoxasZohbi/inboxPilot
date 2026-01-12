@@ -18,6 +18,7 @@ class Email extends Model
      */
     protected $fillable = [
         'user_id',
+        'google_account_id',
         'gmail_id',
         'thread_id',
         'category_id',
@@ -66,6 +67,14 @@ class Email extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the Google account that owns the email.
+     */
+    public function googleAccount(): BelongsTo
+    {
+        return $this->belongsTo(GoogleAccount::class);
     }
 
     /**

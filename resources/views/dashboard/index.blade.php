@@ -24,26 +24,30 @@
                     </svg>
                     Gmail Accounts
                 </h2>
-                @if(Auth::user()->google_token)
-                    <span class="text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded">1 connected</span>
-                @else
-                    <span class="text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded">0 connected</span>
-                @endif
+                <span class="text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded">{{ $googleAccounts->count() }} connected</span>
             </div>
 
             <!-- Connected Accounts List -->
             <div class="space-y-3 mb-6">
-                @if(Auth::user()->google_token)
+                @forelse($googleAccounts as $account)
                     <!-- Connected Account -->
                     <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 hover:border-gray-600 transition-colors">
                         <div class="flex items-center justify-between mb-2">
                             <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
-                                    {{ strtoupper(substr(Auth::user()->email, 0, 1)) }}
-                                </div>
+                                @if($account->avatar)
+                                    <img src="{{ $account->avatar }}" alt="{{ $account->name }}" class="w-10 h-10 rounded-full">
+                                @else
+                                    <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
+                                        {{ strtoupper(substr($account->email, 0, 1)) }}
+                                    </div>
+                                @endif
                                 <div>
-                                    <p class="text-white font-medium text-sm">{{ Auth::user()->email }}</p>
-                                    <p class="text-gray-400 text-xs">Primary account</p>
+                                    <p class="text-white font-medium text-sm">{{ $account->email }}</p>
+                                    @if($account->is_primary)
+                                        <p class="text-gray-400 text-xs">Primary account</p>
+                                    @else
+                                        <p class="text-gray-400 text-xs">{{ $account->name }}</p>
+                                    @endif
                                 </div>
                             </div>
                             <div class="flex items-center gap-2">
@@ -56,16 +60,11 @@
                             </div>
                         </div>
                         <div class="flex items-center justify-between text-xs mt-3 pt-3 border-t border-gray-700">
-                            <span class="text-gray-400">{{ Auth::user()->totalEmailsCount() }} emails</span>
-                            <span class="text-gray-400">Synced {{ Auth::user()->last_synced_at ? Auth::user()->last_synced_at->diffForHumans() : 'never' }}</span>
+                            <span class="text-gray-400">{{ $account->emails_count ?? 0 }} emails</span>
+                            <span class="text-gray-400">Synced {{ $account->last_synced_at ? $account->last_synced_at->diffForHumans() : 'never' }}</span>
                         </div>
                     </div>
-
-                    <!-- Placeholder for more accounts -->
-                    <div class="bg-gray-800 border border-gray-700 border-dashed rounded-lg p-4 text-center opacity-50">
-                        <p class="text-gray-500 text-sm">Coming soon: Multiple accounts</p>
-                    </div>
-                @else
+                @empty
                     <!-- No Account Connected -->
                     <div class="bg-gray-800 border-2 border-gray-700 border-dashed rounded-lg p-6 text-center">
                         <div class="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -76,7 +75,7 @@
                         <p class="text-gray-400 text-sm mb-1">No Gmail account connected</p>
                         <p class="text-gray-500 text-xs">Connect your Gmail to get started</p>
                     </div>
-                @endif
+                @endforelse
             </div>
 
             <!-- Add Account Button -->
@@ -84,7 +83,11 @@
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                 </svg>
-                Connect Gmail Account
+                @if($googleAccounts->count() > 0)
+                    Add Another Account
+                @else
+                    Connect Gmail Account
+                @endif
             </a>
         </div>
     </div>

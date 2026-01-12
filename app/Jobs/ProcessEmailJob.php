@@ -3,7 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Email;
-use App\Models\User;
+use App\Models\GoogleAccount;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Cache;
@@ -21,7 +21,7 @@ class ProcessEmailJob implements ShouldQueue
      * Create a new job instance.
      */
     public function __construct(
-        public User $user,
+        public GoogleAccount $googleAccount,
         public array $emailData
     ) {}
 
@@ -30,20 +30,20 @@ class ProcessEmailJob implements ShouldQueue
      */
     public function handle(): void
     {
-        $cacheKey = "gmail_sync:{$this->user->id}";
+        $cacheKey = "gmail_sync:{$this->googleAccount->user_id}:{$this->googleAccount->id}";
         
         try {
             // Extract sender name and email from "from" field
             $fromParts = $this->parseFromField($this->emailData['from']);
 
             // Create or update email in database
-            // Log::info("Processing email {$this->emailData['id']} for user {$this->user->id} ===> " . json_encode($this->emailData));
             $email = Email::firstOrNew([
-                'user_id' => $this->user->id,
+                'google_account_id' => $this->googleAccount->id,
                 'gmail_id' => $this->emailData['id'],
             ]);
 
             $email->fill([
+                'user_id' => $this->googleAccount->user_id,
                 'thread_id' => $this->emailData['thread_id'],
                 'subject' => $this->emailData['subject'],
                 'from_email' => $fromParts['email'],
@@ -70,8 +70,8 @@ class ProcessEmailJob implements ShouldQueue
                 $syncStatus['status'] = 'completed';
                 $syncStatus['completed_at'] = now()->toIso8601String();
                 
-                // Update user's last sync time on completion
-                $this->user->update(['last_synced_at' => now()]);
+                // Update Google account's last sync time on completion
+                $this->googleAccount->update(['last_synced_at' => now()]);
                 
                 // Dispatch AI processing jobs for pending emails
                 $this->dispatchAIProcessingJobs();
@@ -80,7 +80,7 @@ class ProcessEmailJob implements ShouldQueue
             Cache::put($cacheKey, $syncStatus, now()->addHours(1));
 
         } catch (\Exception $e) {
-            Log::error("Failed to process email {$this->emailData['id']} for user {$this->user->id}: " . $e->getMessage());
+            Log::error("Failed to process email {$this->emailData['id']} for Google account {$this->googleAccount->id}: " . $e->getMessage());
             
             // Update failed count
             $syncStatus = Cache::get($cacheKey, []);
@@ -98,7 +98,7 @@ class ProcessEmailJob implements ShouldQueue
     {
         try {
             // Get all emails that need AI processing (pending or null status)
-            $pendingEmails = Email::where('user_id', $this->user->id)
+            $pendingEmails = Email::where('google_account_id', $this->googleAccount->id)
                 ->where(function ($query) {
                     $query->whereNull('status')
                           ->orWhere('status', 'pending');
@@ -106,7 +106,7 @@ class ProcessEmailJob implements ShouldQueue
                 ->whereNull('processed_at')
                 ->get();
 
-            Log::info("Dispatching AI processing for {$pendingEmails->count()} pending emails for user {$this->user->id}");
+            Log::info("Dispatching AI processing for {$pendingEmails->count()} pending emails for Google account {$this->googleAccount->id}");
 
             // Dispatch AI jobs for each pending email
             foreach ($pendingEmails as $email) {
@@ -114,7 +114,7 @@ class ProcessEmailJob implements ShouldQueue
             }
 
         } catch (\Exception $e) {
-            Log::error("Failed to dispatch AI processing jobs for user {$this->user->id}: {$e->getMessage()}");
+            Log::error("Failed to dispatch AI processing jobs for Google account {$this->googleAccount->id}: {$e->getMessage()}");
             // Don't throw - this is not critical enough to fail the main job
         }
     }
@@ -156,7 +156,7 @@ class ProcessEmailJob implements ShouldQueue
      */
     public function failed(\Throwable $exception): void
     {
-        $cacheKey = "gmail_sync:{$this->user->id}";
+        $cacheKey = "gmail_sync:{$this->googleAccount->user_id}:{$this->googleAccount->id}";
         
         $syncStatus = Cache::get($cacheKey, []);
         $syncStatus['failed'] = ($syncStatus['failed'] ?? 0) + 1;

@@ -4,7 +4,7 @@ namespace App\Services;
 
 use Google\Client;
 use Google\Service\Gmail;
-use App\Models\User;
+use App\Models\GoogleAccount;
 use Illuminate\Support\Facades\Log;
 
 class GmailService
@@ -30,32 +30,32 @@ class GmailService
     }
     
     /**
-     * Set access token for the authenticated user
+     * Set access token for the authenticated Google account
      */
-    public function setAccessToken(User $user): void
+    public function setAccessToken(GoogleAccount $googleAccount): void
     {
-        // Check if user has tokens
-        if (!$user->google_token) {
+        // Check if Google account has tokens
+        if (!$googleAccount->google_token) {
             throw new \Exception('No Google OAuth token found. Please sign in with Google.');
         }
 
-        if (!$user->google_refresh_token) {
+        if (!$googleAccount->google_refresh_token) {
             throw new \Exception('No refresh token available. Please sign in with Google again to grant offline access.');
         }
 
         // Always refresh the token to ensure it's valid
         try {
-            Log::info("Refreshing token for user {$user->id}");
-            Log::info("Refresh token (first 20 chars): " . substr($user->google_refresh_token, 0, 20));
+            Log::info("Refreshing token for Google account {$googleAccount->id}");
+            Log::info("Refresh token (first 20 chars): " . substr($googleAccount->google_refresh_token, 0, 20));
             
             // Refresh the access token
-            $newToken = $this->client->fetchAccessTokenWithRefreshToken($user->google_refresh_token);
+            $newToken = $this->client->fetchAccessTokenWithRefreshToken($googleAccount->google_refresh_token);
             
             Log::info("Token response received: " . json_encode(array_keys($newToken)));
             
             // Check for errors
             if (isset($newToken['error'])) {
-                Log::error("Token refresh error for user {$user->id}: " . json_encode($newToken));
+                Log::error("Token refresh error for Google account {$googleAccount->id}: " . json_encode($newToken));
                 throw new \Exception('Token refresh failed: ' . ($newToken['error_description'] ?? $newToken['error']));
             }
             
@@ -67,10 +67,10 @@ class GmailService
             
             Log::info("New access token (first 20 chars): " . substr($newToken['access_token'], 0, 20));
             
-            // Update user's token in database
-            $user->update([
+            // Update Google account's token in database
+            $googleAccount->update([
                 'google_token' => $newToken['access_token'],
-                'google_refresh_token' => $newToken['refresh_token'] ?? $user->google_refresh_token,
+                'google_refresh_token' => $newToken['refresh_token'] ?? $googleAccount->google_refresh_token,
             ]);
             
             // Important: Set the token on the client
@@ -80,10 +80,10 @@ class GmailService
             $currentToken = $this->client->getAccessToken();
             Log::info("Token set on client. Has access_token: " . (isset($currentToken['access_token']) ? 'yes' : 'no'));
             
-            Log::info("Token refreshed and set successfully for user {$user->id}");
+            Log::info("Token refreshed and set successfully for Google account {$googleAccount->id}");
             
         } catch (\Exception $e) {
-            Log::error("Token refresh exception for user {$user->id}: " . $e->getMessage());
+            Log::error("Token refresh exception for Google account {$googleAccount->id}: " . $e->getMessage());
             Log::error("Stack trace: " . $e->getTraceAsString());
             throw new \Exception('Failed to refresh Google token. Please sign in with Google again.');
         }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\GoogleAccount;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Socialite\Facades\Socialite;
 use Exception;
@@ -39,37 +40,45 @@ class GoogleAuthController extends Controller
                 ->stateless()
                 ->user();
             
-            // Find or create the user
-            $user = User::where('google_id', $googleUser->getId())
-                ->orWhere('email', $googleUser->getEmail())
-                ->first();
+            // Find or create the user by email
+            $user = User::where('email', $googleUser->getEmail())->first();
 
-            if ($user) {
-                // Update existing user with Google info if not already set
-                if (!$user->google_id) {
-                    $user->update([
-                        'google_id' => $googleUser->getId(),
-                        'avatar' => $googleUser->getAvatar(),
-                        'google_token' => $googleUser->token,
-                        'google_refresh_token' => $googleUser->refreshToken,
-                    ]);
-                } else {
-                    // Update tokens even if user exists
-                    $user->update([
-                        'google_token' => $googleUser->token,
-                        'google_refresh_token' => $googleUser->refreshToken ?? $user->google_refresh_token,
-                    ]);
-                }
-            } else {
-                // Create new user
+            if (!$user) {
+                // Create new user if doesn't exist
                 $user = User::create([
                     'name' => $googleUser->getName(),
                     'email' => $googleUser->getEmail(),
+                    'avatar' => $googleUser->getAvatar(),
+                    'email_verified_at' => now(), // Google users are pre-verified
+                ]);
+            }
+
+            // Find or create the Google account for this user
+            $googleAccount = GoogleAccount::where('google_id', $googleUser->getId())->first();
+
+            if ($googleAccount) {
+                // Update existing Google account tokens
+                $googleAccount->update([
+                    'email' => $googleUser->getEmail(),
+                    'name' => $googleUser->getName(),
+                    'avatar' => $googleUser->getAvatar(),
+                    'google_token' => $googleUser->token,
+                    'google_refresh_token' => $googleUser->refreshToken ?? $googleAccount->google_refresh_token,
+                ]);
+            } else {
+                // Check if this is the user's first Google account
+                $isFirstAccount = $user->googleAccounts()->count() === 0;
+
+                // Create new Google account
+                $googleAccount = GoogleAccount::create([
+                    'user_id' => $user->id,
                     'google_id' => $googleUser->getId(),
+                    'email' => $googleUser->getEmail(),
+                    'name' => $googleUser->getName(),
                     'avatar' => $googleUser->getAvatar(),
                     'google_token' => $googleUser->token,
                     'google_refresh_token' => $googleUser->refreshToken,
-                    'email_verified_at' => now(), // Google users are pre-verified
+                    'is_primary' => $isFirstAccount, // First account becomes primary
                 ]);
             }
 

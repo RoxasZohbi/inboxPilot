@@ -76,6 +76,22 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the Google accounts for the user.
+     */
+    public function googleAccounts(): HasMany
+    {
+        return $this->hasMany(GoogleAccount::class);
+    }
+
+    /**
+     * Get the primary Google account for the user.
+     */
+    public function primaryGoogleAccount()
+    {
+        return $this->googleAccounts()->where('is_primary', true)->first();
+    }
+
+    /**
      * Get the categories for the user.
      */
     public function categories(): HasMany

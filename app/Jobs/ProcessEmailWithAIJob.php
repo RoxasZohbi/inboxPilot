@@ -122,8 +122,8 @@ class ProcessEmailWithAIJob implements ShouldQueue
 
             Log::info("Archiving email {$this->email->id} (category: {$category->name}) in Gmail");
 
-            // Set access token for the user
-            $gmailService->setAccessToken($this->email->user);
+            // Set access token for the Google account
+            $gmailService->setAccessToken($this->email->googleAccount);
 
             // Archive the email (remove from INBOX)
             $archived = $gmailService->archiveEmail($this->email->gmail_id);

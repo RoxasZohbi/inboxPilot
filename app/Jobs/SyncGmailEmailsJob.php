@@ -2,7 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Models\User;
+use App\Models\GoogleAccount;
 use App\Models\Email;
 use App\Services\GmailService;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -21,7 +21,7 @@ class SyncGmailEmailsJob implements ShouldQueue
      * Create a new job instance.
      */
     public function __construct(
-        public User $user,
+        public GoogleAccount $googleAccount,
         public ?int $maxResults = null
     ) {
         // Use config limit if not specified
@@ -33,7 +33,7 @@ class SyncGmailEmailsJob implements ShouldQueue
      */
     public function handle(GmailService $gmailService): void
     {
-        $cacheKey = "gmail_sync:{$this->user->id}";
+        $cacheKey = "gmail_sync:{$this->googleAccount->user_id}:{$this->googleAccount->id}";
         
         try {
             // Initialize sync status
@@ -46,11 +46,11 @@ class SyncGmailEmailsJob implements ShouldQueue
                 'completed_at' => null,
             ], now()->addHours(1));
 
-            // Set access token
-            $gmailService->setAccessToken($this->user);
+            // Set access token for the Google account
+            $gmailService->setAccessToken($this->googleAccount);
 
-            // Check current email count
-            $currentEmailCount = Email::where('user_id', $this->user->id)->count();
+            // Check current email count for this Google account
+            $currentEmailCount = Email::where('google_account_id', $this->googleAccount->id)->count();
             $syncLimit = config('app.gmail_sync_limit', 500);
             
             // Calculate how many more emails we can fetch
@@ -58,22 +58,13 @@ class SyncGmailEmailsJob implements ShouldQueue
                 $remainingSlots = $syncLimit - $currentEmailCount;
                 
                 if ($remainingSlots <= 0) {
-                    Log::info("User {$this->user->id} already has {$currentEmailCount} emails (limit: {$syncLimit}). Skipping sync.");
+                    Log::info("Google account {$this->googleAccount->id} already has {$currentEmailCount} emails (limit: {$syncLimit}). Skipping sync.");
                     
                     Log::info("SyncGmailEmailsJob is completed marking job completed");
                     Cache::forget($cacheKey);
-                    // Cache::put($cacheKey, [
-                    //     'status' => 'completed',
-                    //     'total_emails' => 0,
-                    //     'processed' => 0,
-                    //     'failed' => 0,
-                    //     'started_at' => now()->toIso8601String(),
-                    //     'completed_at' => now()->toIso8601String(),
-                    //     'message' => "Already at email limit ({$syncLimit} emails)",
-                    // ], now()->addMinutes(2));
                     
-                    // Update user's last sync time
-                    $this->user->update(['last_synced_at' => now()]);
+                    // Update Google account's last sync time
+                    $this->googleAccount->update(['last_synced_at' => now()]);
                     
                     // Still process pending emails with AI
                     $this->dispatchAIProcessingForPendingEmails();
@@ -86,26 +77,17 @@ class SyncGmailEmailsJob implements ShouldQueue
             }
             
             // Fetch emails (will use incremental sync if last_synced_at is set)
-            Log::info("Starting Gmail sync for user {$this->user->id}. Current: {$currentEmailCount}, Limit: {$syncLimit}, Will fetch: {$this->maxResults}");
-            $emails = $gmailService->fetchEmails($this->maxResults, $this->user->last_synced_at);
+            Log::info("Starting Gmail sync for Google account {$this->googleAccount->id}. Current: {$currentEmailCount}, Limit: {$syncLimit}, Will fetch: {$this->maxResults}");
+            $emails = $gmailService->fetchEmails($this->maxResults, $this->googleAccount->last_synced_at);
             
             if (empty($emails)) {
-                Log::info("No new emails to sync for user {$this->user->id}");
+                Log::info("No new emails to sync for Google account {$this->googleAccount->id}");
                 
                 Log::info("SyncGmailEmailsJob is completed marking job completed");
                 Cache::forget($cacheKey);
-                // Cache::put($cacheKey, [
-                //     'status' => 'completed',
-                //     'total_emails' => 0,
-                //     'processed' => 0,
-                //     'failed' => 0,
-                //     'started_at' => now()->toIso8601String(),
-                //     'completed_at' => now()->toIso8601String(),
-                //     'message' => 'No new emails to sync',
-                // ], now()->addMinutes(2));
                 
-                // Update user's last sync time
-                $this->user->update(['last_synced_at' => now()]);
+                // Update Google account's last sync time
+                $this->googleAccount->update(['last_synced_at' => now()]);
                 
                 // Still process pending emails with AI
                 $this->dispatchAIProcessingForPendingEmails();
@@ -113,7 +95,7 @@ class SyncGmailEmailsJob implements ShouldQueue
                 return;
             }
             
-            Log::info("Fetched " . count($emails) . " emails for user {$this->user->id}");
+            Log::info("Fetched " . count($emails) . " emails for Google account {$this->googleAccount->id}");
 
             // Determine how many jobs to actually dispatch (respect limit)
             $jobsToDispatch = count($emails);
@@ -129,18 +111,18 @@ class SyncGmailEmailsJob implements ShouldQueue
             // Dispatch individual processing jobs with rate limiting
             // STOP dispatching when we reach the limit
             for ($index = 0; $index < $jobsToDispatch; $index++) {
-                ProcessEmailJob::dispatch($this->user, $emails[$index])
+                ProcessEmailJob::dispatch($this->googleAccount, $emails[$index])
                     ->delay(now()->addSeconds($index * 0.5)); // 0.5 second delay between jobs
             }
             
             if ($jobsToDispatch < count($emails)) {
-                Log::info("Stopped dispatching at {$jobsToDispatch} jobs (limit reached) out of " . count($emails) . " fetched emails for user {$this->user->id}");
+                Log::info("Stopped dispatching at {$jobsToDispatch} jobs (limit reached) out of " . count($emails) . " fetched emails for Google account {$this->googleAccount->id}");
             }
 
-            Log::info("Gmail sync initiated for user {$this->user->id}: " . count($emails) . " emails queued");
+            Log::info("Gmail sync initiated for Google account {$this->googleAccount->id}: " . count($emails) . " emails queued");
 
         } catch (\Exception $e) {
-            Log::error("Gmail sync failed for user {$this->user->id}: " . $e->getMessage());
+            Log::error("Gmail sync failed for Google account {$this->googleAccount->id}: " . $e->getMessage());
             
             Cache::put($cacheKey, array_merge(Cache::get($cacheKey, []), [
                 'status' => 'failed',
@@ -159,7 +141,7 @@ class SyncGmailEmailsJob implements ShouldQueue
     {
         try {
             // Get all emails that need AI processing (pending or null status)
-            $pendingEmails = Email::where('user_id', $this->user->id)
+            $pendingEmails = Email::where('google_account_id', $this->googleAccount->id)
                 ->where(function ($query) {
                     $query->whereNull('status')
                           ->orWhere('status', 'pending');
@@ -167,7 +149,7 @@ class SyncGmailEmailsJob implements ShouldQueue
                 ->whereNull('processed_at')
                 ->get();
 
-            Log::info("Dispatching AI processing for {$pendingEmails->count()} pending emails for user {$this->user->id}");
+            Log::info("Dispatching AI processing for {$pendingEmails->count()} pending emails for Google account {$this->googleAccount->id}");
 
             // Dispatch AI jobs for each pending email
             foreach ($pendingEmails as $email) {
@@ -175,7 +157,7 @@ class SyncGmailEmailsJob implements ShouldQueue
             }
 
         } catch (\Exception $e) {
-            Log::error("Failed to dispatch AI processing jobs for user {$this->user->id}: {$e->getMessage()}");
+            Log::error("Failed to dispatch AI processing jobs for Google account {$this->googleAccount->id}: {$e->getMessage()}");
             // Don't throw - this is not critical enough to fail the main job
         }
     }
@@ -185,7 +167,7 @@ class SyncGmailEmailsJob implements ShouldQueue
      */
     public function failed(\Throwable $exception): void
     {
-        $cacheKey = "gmail_sync:{$this->user->id}";
+        $cacheKey = "gmail_sync:{$this->googleAccount->user_id}:{$this->googleAccount->id}";
         
         Cache::put($cacheKey, array_merge(Cache::get($cacheKey, []), [
             'status' => 'failed',
