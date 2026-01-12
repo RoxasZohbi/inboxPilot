@@ -66,7 +66,7 @@ it('syncs emails from Gmail and dispatches ProcessEmailJob for each email', func
         ->with(100, Mockery::type('DateTimeInterface'))
         ->andReturn($mockEmails);
     
-    $this->app->instance(GmailService::class, $gmailService);
+    app()->instance(GmailService::class, $gmailService);
 
     // Act - explicitly set maxResults to 100
     $job = new SyncGmailEmailsJob($googleAccount, 100);
@@ -156,7 +156,7 @@ it('respects sync limit from config and stops dispatching jobs when limit is rea
         ->once()
         ->andReturn($mockEmails);
     
-    $this->app->instance(GmailService::class, $gmailService);
+    app()->instance(GmailService::class, $gmailService);
 
     // Act
     $job = new SyncGmailEmailsJob($googleAccount);
@@ -186,7 +186,7 @@ it('handles empty results and updates last_synced_at without dispatching jobs', 
         ->once()
         ->andReturn([]);
     
-    $this->app->instance(GmailService::class, $gmailService);
+    app()->instance(GmailService::class, $gmailService);
 
     // Act
     $job = new SyncGmailEmailsJob($googleAccount);

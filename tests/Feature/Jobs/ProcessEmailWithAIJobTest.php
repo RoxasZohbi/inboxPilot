@@ -40,13 +40,13 @@ it('successfully processes email with AI and updates all fields', function () {
             'error' => null,
         ]);
     
-    $this->app->instance(OpenAIService::class, $openAIService);
+    app()->instance(OpenAIService::class, $openAIService);
 
     // Mock GmailService (won't be called since category doesn't have archive enabled)
     $gmailService = Mockery::mock(GmailService::class);
     $gmailService->shouldNotReceive('setAccessToken');
     $gmailService->shouldNotReceive('archiveEmail');
-    $this->app->instance(GmailService::class, $gmailService);
+    app()->instance(GmailService::class, $gmailService);
 
     // Act
     $job = new ProcessEmailWithAIJob($email);
@@ -95,7 +95,7 @@ it('archives email in Gmail when category has archive_after_processing enabled',
             'error' => null,
         ]);
     
-    $this->app->instance(OpenAIService::class, $openAIService);
+    app()->instance(OpenAIService::class, $openAIService);
 
     // Mock GmailService
     $gmailService = Mockery::mock(GmailService::class);
@@ -107,7 +107,7 @@ it('archives email in Gmail when category has archive_after_processing enabled',
         ->with('gmail-archive-123')
         ->andReturn(true);
     
-    $this->app->instance(GmailService::class, $gmailService);
+    app()->instance(GmailService::class, $gmailService);
 
     // Act
     $job = new ProcessEmailWithAIJob($email);
@@ -147,13 +147,13 @@ it('marks email as failed after all retries are exhausted', function () {
             'error' => 'OpenAI API rate limit exceeded',
         ]);
     
-    $this->app->instance(OpenAIService::class, $openAIService);
+    app()->instance(OpenAIService::class, $openAIService);
 
     // Mock GmailService (should not be called on failure)
     $gmailService = Mockery::mock(GmailService::class);
     $gmailService->shouldNotReceive('setAccessToken');
     $gmailService->shouldNotReceive('archiveEmail');
-    $this->app->instance(GmailService::class, $gmailService);
+    app()->instance(GmailService::class, $gmailService);
 
     // Act & Assert - expect exception to be thrown for retry
     $job = new ProcessEmailWithAIJob($email);
@@ -210,13 +210,13 @@ it('does not archive email when global auto-archive is disabled', function () {
             'error' => null,
         ]);
     
-    $this->app->instance(OpenAIService::class, $openAIService);
+    app()->instance(OpenAIService::class, $openAIService);
 
     // Mock GmailService - should NOT be called
     $gmailService = Mockery::mock(GmailService::class);
     $gmailService->shouldNotReceive('setAccessToken');
     $gmailService->shouldNotReceive('archiveEmail');
-    $this->app->instance(GmailService::class, $gmailService);
+    app()->instance(GmailService::class, $gmailService);
 
     // Act
     $job = new ProcessEmailWithAIJob($email);
