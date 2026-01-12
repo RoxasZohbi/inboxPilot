@@ -49,6 +49,9 @@
                                 Date
                             </th>
                             <th class="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                                Automation Status
+                            </th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
                                 Actions
                             </th>
                         </tr>
@@ -85,19 +88,78 @@
                                     </div>
                                 </td>
                                 <td class="px-6 py-4">
+                                    <div class="space-y-2">
+                                        <!-- Status Badge -->
+                                        @php
+                                            $statusConfig = [
+                                                'pending' => ['bg' => 'bg-yellow-500/10', 'text' => 'text-yellow-400', 'border' => 'border-yellow-500/20', 'label' => 'Pending'],
+                                                'processing' => ['bg' => 'bg-blue-500/10', 'text' => 'text-blue-400', 'border' => 'border-blue-500/20', 'label' => 'Processing'],
+                                                'completed' => ['bg' => 'bg-green-500/10', 'text' => 'text-green-400', 'border' => 'border-green-500/20', 'label' => 'Completed'],
+                                                'failed' => ['bg' => 'bg-red-500/10', 'text' => 'text-red-400', 'border' => 'border-red-500/20', 'label' => 'Failed'],
+                                                'unavailable' => ['bg' => 'bg-gray-500/10', 'text' => 'text-gray-400', 'border' => 'border-gray-500/20', 'label' => 'Status Unavailable'],
+                                                'unknown' => ['bg' => 'bg-gray-500/10', 'text' => 'text-gray-400', 'border' => 'border-gray-500/20', 'label' => 'Unknown'],
+                                            ];
+                                            $status = $email->automation_status ?? 'unknown';
+                                            $config = $statusConfig[$status] ?? $statusConfig['unknown'];
+                                        @endphp
+                                        
+                                        <div class="flex items-center gap-2">
+                                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border {{ $config['bg'] }} {{ $config['text'] }} {{ $config['border'] }}">
+                                                <span class="w-1.5 h-1.5 rounded-full {{ str_replace('/10', '', $config['bg']) }} mr-1.5"></span>
+                                                {{ $config['label'] }}
+                                            </span>
+                                        </div>
+
+                                        <!-- Message -->
+                                        @if($email->automation_message)
+                                            <div class="group relative inline-block">
+                                                <button type="button" class="text-xs text-gray-400 hover:text-gray-300 flex items-center gap-1 cursor-help">
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                                    </svg>
+                                                    View Message
+                                                </button>
+                                                <div class="hidden group-hover:block absolute z-10 bottom-full left-0 mb-2 w-64 p-3 bg-gray-900 text-gray-300 text-xs rounded-lg shadow-xl border border-gray-700">
+                                                    {{ $email->automation_message }}
+                                                    <div class="absolute bottom-0 left-4 transform translate-y-1/2 rotate-45 w-2 h-2 bg-gray-900 border-r border-b border-gray-700"></div>
+                                                </div>
+                                            </div>
+                                        @endif
+
+                                        <!-- Timestamps -->
+                                        @if($email->automation_attempted_at)
+                                            <div class="text-xs text-gray-500">
+                                                Attempted: {{ \Carbon\Carbon::parse($email->automation_attempted_at)->format('M d, Y H:i') }}
+                                            </div>
+                                        @endif
+                                        @if($email->automation_completed_at)
+                                            <div class="text-xs text-gray-500">
+                                                Completed: {{ \Carbon\Carbon::parse($email->automation_completed_at)->format('M d, Y H:i') }}
+                                            </div>
+                                        @endif
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4">
+
                                     <div class="flex items-center gap-2">
-                                        @if($email->unsubscribe_url)
-                                            <button onclick="window.open('{{ $email->unsubscribe_url }}', '_blank')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
-                                                Unsubscribe Manually
+                                        @if ($email->automation_completed_at)
+                                            @if($email->unsubscribe_url)
+                                                <button onclick="window.open('{{ $email->unsubscribe_url }}', '_blank')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
+                                                    Unsubscribe Manually
+                                                </button>
+                                            @else
+                                                <span class="px-4 py-2 bg-gray-700 text-gray-400 text-sm font-medium rounded-lg cursor-not-allowed">
+                                                    No URL Available
+                                                </span>
+                                            @endif
+                                            <button class="automated-unsubscribe-btn px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-sm font-medium rounded-lg transition-all shadow-lg" data-email-id="{{ $email->id }}">
+                                                Automated Unsubscribe
                                             </button>
                                         @else
                                             <span class="px-4 py-2 bg-gray-700 text-gray-400 text-sm font-medium rounded-lg cursor-not-allowed">
-                                                No URL Available
+                                                Unsubscribed
                                             </span>
                                         @endif
-                                        <button class="automated-unsubscribe-btn px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-sm font-medium rounded-lg transition-all shadow-lg" data-email-id="{{ $email->id }}">
-                                            Automated Unsubscribe
-                                        </button>
                                     </div>
                                 </td>
                             </tr>

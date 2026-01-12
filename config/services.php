@@ -41,4 +41,8 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI'),
     ],
 
+    'unsubscribe_api' => [
+        'url' => env('UNSUBSCRIBE_API_URL'),
+    ],
+
 ];
