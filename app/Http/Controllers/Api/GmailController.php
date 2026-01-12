@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\SyncGmailEmailsJob;
+use App\Jobs\ProcessEmailWithAIJob;
+use App\Models\Email;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -188,6 +190,111 @@ class GmailController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Failed to get sync status',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Process pending emails with AI for a specific account or all accounts
+     */
+    public function processPendingEmails(Request $request): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+            $accountId = $request->input('account_id');
+            
+            if ($accountId) {
+                // Process specific account
+                $googleAccount = $user->googleAccounts()->find($accountId);
+                
+                if (!$googleAccount) {
+                    return response()->json([
+                        'message' => 'Google account not found or does not belong to you.',
+                    ], 404);
+                }
+                
+                // Find all pending emails for this account
+                $pendingEmails = Email::where('google_account_id', $googleAccount->id)
+                    ->where(function ($query) {
+                        $query->whereNull('status')
+                              ->orWhere('status', 'pending');
+                    })
+                    ->whereNull('processed_at')
+                    ->get();
+                
+                if ($pendingEmails->isEmpty()) {
+                    return response()->json([
+                        'message' => 'No pending emails to process for this account',
+                        'data' => [
+                            'account_id' => $googleAccount->id,
+                            'account_email' => $googleAccount->email,
+                            'pending_count' => 0,
+                        ],
+                    ], 200);
+                }
+                
+                // Dispatch AI processing jobs for each pending email
+                $dispatched = 0;
+                foreach ($pendingEmails as $email) {
+                    ProcessEmailWithAIJob::dispatch($email);
+                    $dispatched++;
+                }
+                
+                return response()->json([
+                    'message' => "Successfully queued {$dispatched} email(s) for AI processing",
+                    'data' => [
+                        'account_id' => $googleAccount->id,
+                        'account_email' => $googleAccount->email,
+                        'jobs_dispatched' => $dispatched,
+                    ],
+                ], 202);
+            } else {
+                // Process all pending emails for all user's accounts
+                $googleAccountIds = $user->googleAccounts()->pluck('id');
+                
+                if ($googleAccountIds->isEmpty()) {
+                    return response()->json([
+                        'message' => 'No Gmail accounts connected',
+                    ], 400);
+                }
+                
+                // Find all pending emails for all user's accounts
+                $pendingEmails = Email::whereIn('google_account_id', $googleAccountIds)
+                    ->where(function ($query) {
+                        $query->whereNull('status')
+                              ->orWhere('status', 'pending');
+                    })
+                    ->whereNull('processed_at')
+                    ->get();
+                
+                if ($pendingEmails->isEmpty()) {
+                    return response()->json([
+                        'message' => 'No pending emails to process',
+                        'data' => [
+                            'pending_count' => 0,
+                        ],
+                    ], 200);
+                }
+                
+                // Dispatch AI processing jobs for each pending email
+                $dispatched = 0;
+                foreach ($pendingEmails as $email) {
+                    ProcessEmailWithAIJob::dispatch($email);
+                    $dispatched++;
+                }
+                
+                return response()->json([
+                    'message' => "Successfully queued {$dispatched} email(s) for AI processing",
+                    'data' => [
+                        'jobs_dispatched' => $dispatched,
+                    ],
+                ], 202);
+            }
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to process pending emails',
                 'error' => $e->getMessage(),
             ], 500);
         }

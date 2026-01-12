@@ -63,6 +63,18 @@
                             <span class="text-gray-400">{{ $account->emails_count ?? 0 }} emails</span>
                             <span class="text-gray-400">Synced {{ $account->last_synced_at ? $account->last_synced_at->diffForHumans() : 'never' }}</span>
                         </div>
+                        
+                        <!-- Sync Button -->
+                        <div class="mt-3">
+                            <button class="sync-btn w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
+                                    data-account-id="{{ $account->id }}"
+                                    data-account-email="{{ $account->email }}">
+                                <svg class="w-4 h-4 sync-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                </svg>
+                                <span class="sync-text">Sync Emails</span>
+                            </button>
+                        </div>
                     </div>
                 @empty
                     <!-- No Account Connected -->
@@ -105,12 +117,22 @@
                         <span class="text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded">{{ $categories->count() }}</span>
                     @endif
                 </h2>
-                <a href="{{ route('categories.create') }}" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-all duration-300 flex items-center gap-2 shadow-md hover:shadow-lg">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                    </svg>
-                    Add Category
-                </a>
+                <div class="flex items-center gap-3">
+                    <button class="process-all-btn px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-gray-700 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all duration-300 flex items-center gap-2 shadow-md hover:shadow-lg"
+                            data-pending-count="{{ $totalPendingCount ?? 0 }}"
+                            @if(($totalPendingCount ?? 0) === 0) disabled @endif>
+                        <svg class="w-5 h-5 process-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                        </svg>
+                        <span class="process-text">Process All AI ({{ $totalPendingCount ?? 0 }})</span>
+                    </button>
+                    <a href="{{ route('categories.create') }}" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-all duration-300 flex items-center gap-2 shadow-md hover:shadow-lg">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        Add Category
+                    </a>
+                </div>
             </div>
 
             <!-- Categories Grid -->
@@ -157,8 +179,140 @@
 @push('scripts')
     <script>
         $(document).ready(function() {
-            // Your existing JavaScript remains the same
-            // Add any additional functionality for the new UI elements here
+            // CSRF Token setup for AJAX requests
+            $.ajaxSetup({
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                    'Accept': 'application/json'
+                }
+            });
+
+            // Sync Emails Button Handler
+            $('.sync-btn').on('click', function() {
+                const $btn = $(this);
+                const accountId = $btn.data('account-id');
+                const accountEmail = $btn.data('account-email');
+                
+                // Disable button and show loading state
+                $btn.prop('disabled', true);
+                $btn.find('.sync-icon').addClass('animate-spin');
+                $btn.find('.sync-text').text('Syncing...');
+                
+                // Make API request
+                $.ajax({
+                    url: '/api/gmail/sync',
+                    method: 'POST',
+                    data: {
+                        account_id: accountId,
+                        max_results: 100
+                    },
+                    success: function(response) {
+                        // Show success notification
+                        showNotification('success', response.message || 'Email sync started successfully!');
+                        
+                        // Re-enable button after 5 seconds
+                        setTimeout(() => {
+                            $btn.prop('disabled', false);
+                            $btn.find('.sync-icon').removeClass('animate-spin');
+                            $btn.find('.sync-text').text('Sync Emails');
+                        }, 5000);
+                    },
+                    error: function(xhr) {
+                        const errorMsg = xhr.responseJSON?.message || 'Failed to start email sync';
+                        showNotification('error', errorMsg);
+                        
+                        // Re-enable button
+                        $btn.prop('disabled', false);
+                        $btn.find('.sync-icon').removeClass('animate-spin');
+                        $btn.find('.sync-text').text('Sync Emails');
+                    }
+                });
+            });
+
+            // Process All Pending Emails Button Handler
+            $('.process-all-btn').on('click', function() {
+                const $btn = $(this);
+                const pendingCount = $btn.data('pending-count');
+                
+                if (pendingCount === 0) return;
+                
+                // Disable button and show loading state
+                $btn.prop('disabled', true);
+                $btn.find('.process-icon').addClass('animate-spin');
+                $btn.find('.process-text').text('Processing...');
+                
+                // Make API request (no account_id means process all)
+                $.ajax({
+                    url: '/api/emails/process-pending',
+                    method: 'POST',
+                    data: {},
+                    success: function(response) {
+                        // Show success notification
+                        showNotification('success', response.message || 'AI processing jobs queued successfully!');
+                        
+                        // Reload page after 3 seconds to update counts
+                        setTimeout(() => {
+                            location.reload();
+                        }, 3000);
+                    },
+                    error: function(xhr) {
+                        const errorMsg = xhr.responseJSON?.message || 'Failed to process pending emails';
+                        showNotification('error', errorMsg);
+                        
+                        // Re-enable button
+                        $btn.prop('disabled', false);
+                        $btn.find('.process-icon').removeClass('animate-spin');
+                        $btn.find('.process-text').text(`Process All AI (${pendingCount})`);
+                    }
+                });
+            });
+
+            // Notification Helper Function
+            function showNotification(type, message) {
+                // Create notification element
+                const bgColor = type === 'success' ? 'bg-green-600' : 'bg-red-600';
+                const icon = type === 'success' 
+                    ? '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>'
+                    : '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>';
+                
+                const $notification = $(`
+                    <div class="fixed top-4 right-4 ${bgColor} text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 z-50 animate-slide-in">
+                        ${icon}
+                        <span class="font-medium">${message}</span>
+                    </div>
+                `);
+                
+                // Append to body
+                $('body').append($notification);
+                
+                // Remove after 5 seconds
+                setTimeout(() => {
+                    $notification.fadeOut(300, function() {
+                        $(this).remove();
+                    });
+                }, 5000);
+            }
+
+            // Add CSS for animation
+            if (!$('#notification-styles').length) {
+                $('head').append(`
+                    <style id="notification-styles">
+                        @keyframes slide-in {
+                            from {
+                                transform: translateX(100%);
+                                opacity: 0;
+                            }
+                            to {
+                                transform: translateX(0);
+                                opacity: 1;
+                            }
+                        }
+                        .animate-slide-in {
+                            animation: slide-in 0.3s ease-out;
+                        }
+                    </style>
+                `);
+            }
         });
     </script>
 @endpush

@@ -38,8 +38,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Route::apiResource('categories', CategoryController::class);
     
     // Gmail API endpoints
-    Route::post('/gmail/sync', [GmailController::class, 'syncEmails']);
+    Route::post('/gmail/sync', [GmailController::class, 'syncEmails'])->middleware('throttle:5,1');
     Route::get('/gmail/sync-status', [GmailController::class, 'syncStatus']);
+    Route::post('/emails/process-pending', [GmailController::class, 'processPendingEmails'])->middleware('throttle:5,1');
     
     // Email API endpoints
     Route::get('/emails', [EmailController::class, 'index']);
