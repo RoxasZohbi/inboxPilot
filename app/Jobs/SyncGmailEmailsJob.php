@@ -60,15 +60,17 @@ class SyncGmailEmailsJob implements ShouldQueue
                 if ($remainingSlots <= 0) {
                     Log::info("User {$this->user->id} already has {$currentEmailCount} emails (limit: {$syncLimit}). Skipping sync.");
                     
-                    Cache::put($cacheKey, [
-                        'status' => 'completed',
-                        'total_emails' => 0,
-                        'processed' => 0,
-                        'failed' => 0,
-                        'started_at' => now()->toIso8601String(),
-                        'completed_at' => now()->toIso8601String(),
-                        'message' => "Already at email limit ({$syncLimit} emails)",
-                    ], now()->addHours(1));
+                    Log::info("SyncGmailEmailsJob is completed marking job completed");
+                    Cache::forget($cacheKey);
+                    // Cache::put($cacheKey, [
+                    //     'status' => 'completed',
+                    //     'total_emails' => 0,
+                    //     'processed' => 0,
+                    //     'failed' => 0,
+                    //     'started_at' => now()->toIso8601String(),
+                    //     'completed_at' => now()->toIso8601String(),
+                    //     'message' => "Already at email limit ({$syncLimit} emails)",
+                    // ], now()->addMinutes(2));
                     
                     // Update user's last sync time
                     $this->user->update(['last_synced_at' => now()]);
@@ -90,15 +92,17 @@ class SyncGmailEmailsJob implements ShouldQueue
             if (empty($emails)) {
                 Log::info("No new emails to sync for user {$this->user->id}");
                 
-                Cache::put($cacheKey, [
-                    'status' => 'completed',
-                    'total_emails' => 0,
-                    'processed' => 0,
-                    'failed' => 0,
-                    'started_at' => now()->toIso8601String(),
-                    'completed_at' => now()->toIso8601String(),
-                    'message' => 'No new emails to sync',
-                ], now()->addHours(1));
+                Log::info("SyncGmailEmailsJob is completed marking job completed");
+                Cache::forget($cacheKey);
+                // Cache::put($cacheKey, [
+                //     'status' => 'completed',
+                //     'total_emails' => 0,
+                //     'processed' => 0,
+                //     'failed' => 0,
+                //     'started_at' => now()->toIso8601String(),
+                //     'completed_at' => now()->toIso8601String(),
+                //     'message' => 'No new emails to sync',
+                // ], now()->addMinutes(2));
                 
                 // Update user's last sync time
                 $this->user->update(['last_synced_at' => now()]);
@@ -120,7 +124,7 @@ class SyncGmailEmailsJob implements ShouldQueue
             // Update cache with actual job count
             Cache::put($cacheKey, array_merge(Cache::get($cacheKey, []), [
                 'total_emails' => $jobsToDispatch,
-            ]), now()->addHours(1));
+            ]), now()->addMinutes(2));
 
             // Dispatch individual processing jobs with rate limiting
             // STOP dispatching when we reach the limit
@@ -142,7 +146,7 @@ class SyncGmailEmailsJob implements ShouldQueue
                 'status' => 'failed',
                 'error' => $e->getMessage(),
                 'completed_at' => now()->toIso8601String(),
-            ]), now()->addHours(1));
+            ]), now()->addMinutes(2));
 
             throw $e;
         }
@@ -187,6 +191,6 @@ class SyncGmailEmailsJob implements ShouldQueue
             'status' => 'failed',
             'error' => $exception->getMessage(),
             'completed_at' => now()->toIso8601String(),
-        ]), now()->addHours(1));
+        ]), now()->addMinutes(2));
     }
 }

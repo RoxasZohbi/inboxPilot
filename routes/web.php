@@ -13,7 +13,7 @@ Route::get('/', function () {
 Route::get('auth/google', [GoogleAuthController::class, 'redirectToGoogle'])->name('auth.google');
 Route::get('auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback']);
 
-Route::prefix('dashboard')->middleware('auth')->group(function () {
+Route::prefix('dashboard')->middleware(['auth', 'auto.sync.gmail'])->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::resource('categories', CategoryController::class);
 });

@@ -43,7 +43,9 @@ class ProcessEmailWithAIJob implements ShouldQueue
                 $this->email->update([
                     'category_id' => $result['category_id'],
                     'ai_summary' => $result['summary'],
-                    'status' => 'completed',
+                    'is_unsubscribe_available' => $result['is_unsubscribe_available'],
+                    'unsubscribe_url' => $result['unsubscribe_url'],
+                    'status' => $result['category_id'] ? 'completed' : 'pending',
                     'processed_at' => now(),
                     'failed_reason' => null, // Clear any previous errors
                 ]);
@@ -51,6 +53,7 @@ class ProcessEmailWithAIJob implements ShouldQueue
                 Log::info("Successfully processed email {$this->email->id} with AI", [
                     'category_id' => $result['category_id'],
                     'has_summary' => !empty($result['summary']),
+                    'has_unsubscribe' => $result['is_unsubscribe_available'],
                 ]);
 
                 // Archive email in Gmail if enabled

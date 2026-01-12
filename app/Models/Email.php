@@ -37,6 +37,8 @@ class Email extends Model
         'is_archived',
         'has_attachments',
         'internal_date',
+        'is_unsubscribe_available',
+        'unsubscribe_url',
     ];
 
     /**
@@ -51,7 +53,7 @@ class Email extends Model
             'date' => 'datetime',
             'internal_date' => 'datetime',
             'processed_at' => 'datetime',
-            'is_archived' => 'boolean',
+            // 'is_archived' => 'boolean',
             // 'is_unread' => 'boolean',
             // 'is_starred' => 'boolean',
             // 'has_attachments' => 'boolean',

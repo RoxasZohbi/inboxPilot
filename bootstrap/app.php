@@ -13,6 +13,11 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->statefulApi();
+        
+        // Auto-sync Gmail emails for dashboard routes
+        $middleware->alias([
+            'auto.sync.gmail' => \App\Http\Middleware\AutoSyncGmailEmails::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
