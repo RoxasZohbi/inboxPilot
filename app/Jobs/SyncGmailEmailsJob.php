@@ -78,7 +78,7 @@ class SyncGmailEmailsJob implements ShouldQueue
             
             // Fetch emails (will use incremental sync if last_synced_at is set)
             Log::info("Starting Gmail sync for Google account {$this->googleAccount->id}. Current: {$currentEmailCount}, Limit: {$syncLimit}, Will fetch: {$this->maxResults}");
-            $emails = $gmailService->fetchEmails($this->maxResults, $this->googleAccount->last_synced_at);
+            $emails = $gmailService->fetchEmails($this->maxResults, $this->googleAccount->created_at);
             
             if (empty($emails)) {
                 Log::info("No new emails to sync for Google account {$this->googleAccount->id}");
