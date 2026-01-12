@@ -75,8 +75,6 @@ jobs:
               "sudo unzip -o /tmp/project.zip -d /var/www/inboxPilot",
               "sudo chown -R www-data:www-data /var/www/inboxPilot",
               "sudo chmod -R 775 /var/www/inboxPilot/storage /var/www/inboxPilot/bootstrap/cache",
-              "echo Checking Redis installation...",
-              "if ! php -m | grep -q redis; then echo Installing Redis extension...; sudo apt-get update && sudo apt-get install -y php8.3-redis redis-server && sudo systemctl enable redis-server && sudo systemctl start redis-server; fi",
               "sudo COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader -d /var/www/inboxPilot",
               "sudo -u www-data bash -c \"cd /var/www/inboxPilot && php artisan migrate --force\"",
               "sudo -u www-data bash -c \"cd /var/www/inboxPilot && php artisan config:clear && php artisan cache:clear && php artisan route:clear && php artisan view:clear\"",
