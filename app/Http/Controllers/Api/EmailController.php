@@ -190,4 +190,53 @@ class EmailController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Bulk delete (soft delete) multiple emails
+     */
+    public function bulkDelete(Request $request): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+            
+            // Validate request
+            $validated = $request->validate([
+                'email_ids' => 'required|array|min:1',
+                'email_ids.*' => 'required|integer|exists:emails,id',
+            ]);
+
+            $emailIds = $validated['email_ids'];
+            
+            // Get emails that belong to the user
+            $emails = $user->emails()
+                ->whereIn('id', $emailIds)
+                ->get();
+            
+            if ($emails->isEmpty()) {
+                return response()->json([
+                    'message' => 'No valid emails found to delete',
+                ], 404);
+            }
+            
+            // Soft delete all emails
+            $deletedCount = 0;
+            foreach ($emails as $email) {
+                $email->delete();
+                $deletedCount++;
+            }
+
+            return response()->json([
+                'message' => "Successfully deleted {$deletedCount} email(s)",
+                'data' => [
+                    'deleted_count' => $deletedCount,
+                ],
+            ], 200);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to delete emails',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 }

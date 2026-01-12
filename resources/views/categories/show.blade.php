@@ -202,6 +202,106 @@
         let isModalOpen = false;
         let currentEmailData = null;
 
+        // ============================================
+        // Bulk Delete Functionality
+        // ============================================
+        
+        // Track checkbox changes
+        $(document).on('change', 'input[name="email_ids[]"]', function() {
+            updateBulkActionsBar();
+        });
+
+        // Select All checkbox
+        $('#selectAllCheckbox').on('change', function() {
+            const isChecked = $(this).prop('checked');
+            $('input[name="email_ids[]"]').prop('checked', isChecked);
+            updateBulkActionsBar();
+        });
+
+        // Update bulk actions bar visibility and count
+        function updateBulkActionsBar() {
+            const checkedCount = $('input[name="email_ids[]"]:checked').length;
+            const totalCount = $('input[name="email_ids[]"]').length;
+            
+            if (checkedCount > 0) {
+                $('#bulkActionsBar').removeClass('hidden');
+                $('#selectedCount').text(checkedCount);
+                
+                // Update Select All checkbox state
+                if (checkedCount === totalCount) {
+                    $('#selectAllCheckbox').prop('checked', true).prop('indeterminate', false);
+                } else {
+                    $('#selectAllCheckbox').prop('checked', false).prop('indeterminate', true);
+                }
+            } else {
+                $('#bulkActionsBar').addClass('hidden');
+                $('#selectAllCheckbox').prop('checked', false).prop('indeterminate', false);
+            }
+        }
+
+        // Bulk delete button click
+        $('#bulkDeleteBtn').on('click', function() {
+            const selectedIds = [];
+            $('input[name="email_ids[]"]:checked').each(function() {
+                selectedIds.push($(this).val());
+            });
+
+            if (selectedIds.length === 0) {
+                return;
+            }
+
+            // Confirm deletion
+            const confirmMsg = `Are you sure you want to delete ${selectedIds.length} email(s)? This action can be undone from trash.`;
+            if (!confirm(confirmMsg)) {
+                return;
+            }
+
+            // Disable button and show loading state
+            const $btn = $(this);
+            $btn.prop('disabled', true).html(`
+                <svg class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                Deleting...
+            `);
+
+            // Make AJAX request
+            $.ajax({
+                url: '/api/emails/bulk-delete',
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                    'Accept': 'application/json'
+                },
+                data: {
+                    email_ids: selectedIds
+                },
+                success: function(response) {
+                    // Show success notification
+                    alert(response.message || 'Emails deleted successfully!');
+                    
+                    // Reload page to update list
+                    location.reload();
+                },
+                error: function(xhr) {
+                    const errorMsg = xhr.responseJSON?.message || 'Failed to delete emails';
+                    alert('Error: ' + errorMsg);
+                    
+                    // Re-enable button
+                    $btn.prop('disabled', false).html(`
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                        Delete Selected
+                    `);
+                }
+            });
+        });
+
+        // ============================================
+        // Email Detail Modal Functionality
+        // ============================================
+
         // Open Email Modal on click
         $(document).on('click', '.openEmailModal', function (e) {
             e.stopPropagation();

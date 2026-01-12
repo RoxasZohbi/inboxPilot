@@ -1,8 +1,8 @@
 @props([
     'title' => 'Categorized Emails',
     'description' => 'Emails that match this category',
-    'showSearch' => true,
-    'showFilter' => true,
+    'showSearch' => false,
+    'showFilter' => false,
     'emptyTitle' => 'No emails yet',
     'emptyDescription' => 'Emails matching this category will appear here',
     'showPagination' => true,
@@ -14,6 +14,27 @@
 ])
 
 <div class="bg-gray-900 rounded-xl border border-gray-800 shadow-xl">
+    <!-- Bulk Actions Bar (Hidden by default, shown when emails selected) -->
+    <div id="bulkActionsBar" class="hidden bg-blue-900/30 border-b border-blue-700 p-4">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <input type="checkbox" 
+                       id="selectAllCheckbox"
+                       class="w-5 h-5 bg-gray-800 border-gray-700 rounded text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900 focus:ring-2 cursor-pointer">
+                <label for="selectAllCheckbox" class="text-white font-medium cursor-pointer">
+                    Select All (<span id="selectedCount">0</span> selected)
+                </label>
+            </div>
+            <button id="bulkDeleteBtn" 
+                    class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+                Delete Selected
+            </button>
+        </div>
+    </div>
+
     <!-- Header -->
     <div class="p-6 border-b border-gray-800">
         <div class="flex items-center justify-between">
@@ -44,6 +65,8 @@
                         <option>This Year</option>
                     </select>
                 @endif
+
+
             </div>
         </div>
     </div>

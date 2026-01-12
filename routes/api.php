@@ -48,4 +48,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/emails/{id}/toggle-read', [EmailController::class, 'toggleRead']);
     Route::patch('/emails/{id}/toggle-star', [EmailController::class, 'toggleStar']);
     Route::delete('/emails/{id}', [EmailController::class, 'destroy']);
+    Route::post('/emails/bulk-delete', [EmailController::class, 'bulkDelete'])->middleware('throttle:60,1');
 });
