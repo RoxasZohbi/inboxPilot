@@ -73,11 +73,14 @@ jobs:
               "echo Starting Laravel deployment...",
               "sudo -u ubuntu -i aws s3 cp s3://'$DEPLOY_BUCKET'/latest/project.zip /tmp/project.zip",
               "sudo unzip -o /tmp/project.zip -d /var/www/inboxPilot",
-              "sudo COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader -d /var/www/inboxPilot",
-              "sudo -u ubuntu -i bash -c \"cd /var/www/inboxPilot && php artisan migrate --force\"",
-              "sudo -u ubuntu -i bash -c \"cd /var/www/inboxPilot && sudo npm ci && sudo npm run build  && php artisan config:clear && php artisan cache:clear && php artisan route:clear && php artisan view:clear && sudo supervisorctl restart laravel-queue:* \"",
               "sudo chown -R www-data:www-data /var/www/inboxPilot",
               "sudo chmod -R 775 /var/www/inboxPilot/storage /var/www/inboxPilot/bootstrap/cache",
+              "sudo COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader -d /var/www/inboxPilot",
+              "sudo -u www-data bash -c \"cd /var/www/inboxPilot && php artisan migrate --force\"",
+              "sudo -u www-data bash -c \"cd /var/www/inboxPilot && php artisan config:clear && php artisan cache:clear && php artisan route:clear && php artisan view:clear\"",
+              "sudo npm ci --prefix /var/www/inboxPilot",
+              "sudo npm run build --prefix /var/www/inboxPilot",
+              "sudo supervisorctl restart laravel-queue:*",
               "sudo systemctl restart php8.3-fpm",
               "sudo systemctl restart nginx"
             ]' \
