@@ -295,7 +295,7 @@
         });
 
         // ============================================
-        // Email Detail Modal Functionality
+        // Email Detail Modal Functionality...
         // ============================================
 
         // Open Email Modal on click
