@@ -117,4 +117,22 @@ class Email extends Model
     {
         return $query->where('is_unsubscribe_available', 1);
     }
+
+    /**
+     * Scope a query to only include unlisted emails (not categorized).
+     */
+    public function scopeUnlisted($query)
+    {
+        return $query->whereNull('category_id');
+    }
+
+    /**
+     * Scope a query to only include pending emails (not yet processed).
+     */
+    public function scopePending($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('status')->orWhere('status', 'pending');
+        })->whereNull('processed_at');
+    }
 }

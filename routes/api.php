@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\GmailController;
 use App\Http\Controllers\Api\EmailController;
 use App\Http\Controllers\UnsubscribeEmailController;
+use App\Http\Controllers\UnlistedEmailController;
 
 /*
 |--------------------------------------------------------------------------
@@ -49,6 +50,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/emails/{id}/toggle-star', [EmailController::class, 'toggleStar']);
     Route::delete('/emails/{id}', [EmailController::class, 'destroy']);
     Route::post('/emails/bulk-delete', [EmailController::class, 'bulkDelete'])->middleware('throttle:60,1');
+    
+    // Unlisted Emails API endpoints
+    Route::post('/unlisted-emails/process-all', [UnlistedEmailController::class, 'processAll'])->middleware('throttle:10,1');
     
     // Unsubscribe API endpoints
     Route::post('/unsubscribe-emails/manual', [UnsubscribeEmailController::class, 'manualUnsubscribe']);
