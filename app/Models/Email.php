@@ -32,6 +32,7 @@ class Email extends Model
         'ai_summary',
         'status',
         'failed_reason',
+        'processed_at',
         'labels',
         'is_unread',
         'is_starred',
