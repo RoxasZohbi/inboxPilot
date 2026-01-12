@@ -70,38 +70,16 @@ jobs:
             --comment "Deploy Laravel project" \
             --parameters 'commands=[
               "set -e",
-              "exec > >(tee /tmp/deploy.log) 2>&1",
-              "echo ========================================",
               "echo Starting Laravel deployment...",
-              "echo ========================================",
-              "echo Step 1: Download from S3",
               "sudo -u ubuntu -i aws s3 cp s3://'$DEPLOY_BUCKET'/latest/project.zip /tmp/project.zip",
-              "echo Step 2: Extract files",
               "sudo unzip -o /tmp/project.zip -d /var/www/inboxPilot",
-              "echo Step 3: Set permissions",
+              "sudo COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader -d /var/www/inboxPilot",
+              "sudo -u ubuntu -i bash -c \"cd /var/www/inboxPilot && php artisan migrate --force\"",
+              "sudo -u ubuntu -i bash -c \"cd /var/www/inboxPilot && sudo npm ci && sudo npm run build  && php artisan config:clear && php artisan cache:clear && php artisan route:clear && php artisan view:clear && sudo supervisorctl restart laravel-queue:* \"",
               "sudo chown -R www-data:www-data /var/www/inboxPilot",
               "sudo chmod -R 775 /var/www/inboxPilot/storage /var/www/inboxPilot/bootstrap/cache",
-              "echo Step 4: Copy environment file",
-              "sudo cp /var/www/inboxPilot/.env.production /var/www/inboxPilot/.env 2>/dev/null || echo .env already exists",
-              "echo Step 5: Install Composer dependencies",
-              "cd /var/www/inboxPilot && sudo COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader",
-              "echo Step 6: Run migrations",
-              "sudo -u www-data bash -c \"cd /var/www/inboxPilot && php artisan migrate --force\"",
-              "echo Step 7: Clear caches",
-              "sudo -u www-data bash -c \"cd /var/www/inboxPilot && php artisan config:cache\"",
-              "sudo -u www-data bash -c \"cd /var/www/inboxPilot && php artisan route:cache\"",
-              "sudo -u www-data bash -c \"cd /var/www/inboxPilot && php artisan view:cache\"",
-              "echo Step 8: Install npm dependencies",
-              "cd /var/www/inboxPilot && sudo npm ci",
-              "echo Step 9: Build assets",
-              "cd /var/www/inboxPilot && sudo npm run build",
-              "echo Step 10: Restart services",
-              "sudo supervisorctl restart laravel-queue:* || echo No queue workers to restart",
               "sudo systemctl restart php8.3-fpm",
-              "sudo systemctl restart nginx",
-              "echo ========================================",
-              "echo ✅ Deployment completed successfully!",
-              "echo ========================================"
+              "sudo systemctl restart nginx"
             ]' \
             --query "Command.CommandId" \
             --output text)
@@ -122,16 +100,13 @@ jobs:
 
           echo "🧾 Final Status: $STATUS"
 
-          OUTPUT=$(aws ssm get-command-invocation \
+          aws ssm get-command-invocation \
             --command-id "$COMMAND_ID" \
             --instance-id "$INSTANCE_ID" \
             --query '{Status:Status, StdOut:StandardOutputContent, StdErr:StandardErrorContent}' \
-            --output json)
-
-          echo "$OUTPUT" | jq .
+            --output json
 
           if [ "$STATUS" != "Success" ]; then
             echo "❌ Deployment failed via SSM"
-            echo "📋 Full logs available at: /tmp/deploy.log on EC2"
             exit 1
           fi
